@@ -204,7 +204,7 @@ export function FieldBuilder({ fields, onChange, disabled }: FieldBuilderProps) 
                       }
                       disabled={disabled || (kanbanCardLimitReached && !field.showOnKanbanCard)}
                     />
-                    Show on kanban card
+                    Show on lead card
                   </Label>
                 </div>
               </div>
