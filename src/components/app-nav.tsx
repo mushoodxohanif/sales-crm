@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 
 const navItems = [
-  { href: "/", label: "Dashboard", match: "exact" as const },
+  { href: "/dashboard", label: "Dashboard", match: "exact" as const },
   { href: "/campaign-types", label: "Campaign types", match: "prefix" as const },
   { href: "/campaigns", label: "Campaigns", match: "prefix" as const },
   { href: "/import", label: "Import", match: "prefix" as const },

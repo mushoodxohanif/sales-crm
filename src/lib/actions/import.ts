@@ -38,7 +38,7 @@ function formatZodError(error: { issues: { message: string }[] }) {
 
 function revalidateImportPaths(campaignId?: string) {
   revalidatePath("/import");
-  revalidatePath("/");
+  revalidatePath("/dashboard");
   revalidatePath("/campaigns");
 
   if (campaignId) {

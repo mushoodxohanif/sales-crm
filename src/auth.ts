@@ -33,7 +33,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       }
 
       if (!isAllowedWorkspaceUser(profile)) {
-        return "/login?error=AccessDenied";
+        return "/?error=AccessDenied";
       }
 
       const googleId = profile?.sub;

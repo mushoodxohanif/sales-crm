@@ -18,7 +18,7 @@ import {
 import { UserMenu } from "@/components/user-menu";
 
 const navItems = [
-  { href: "/", label: "Dashboard", icon: LayoutDashboardIcon, match: "exact" as const },
+  { href: "/dashboard", label: "Dashboard", icon: LayoutDashboardIcon, match: "exact" as const },
   { href: "/campaign-types", label: "Campaign types", icon: ShapesIcon, match: "prefix" as const },
   { href: "/campaigns", label: "Campaigns", icon: MegaphoneIcon, match: "prefix" as const },
   { href: "/import", label: "Import", icon: FileSpreadsheetIcon, match: "prefix" as const },

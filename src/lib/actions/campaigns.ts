@@ -29,7 +29,7 @@ function formatZodError(error: { issues: { message: string }[] }) {
 function revalidateCampaignPaths(campaignId: string) {
   revalidatePath("/campaigns");
   revalidatePath(`/campaigns/${campaignId}`);
-  revalidatePath("/");
+  revalidatePath("/dashboard");
 }
 
 export async function createCampaign(input: unknown): Promise<ActionResult<{ id: string }>> {
@@ -82,7 +82,7 @@ export async function createCampaign(input: unknown): Promise<ActionResult<{ id:
   });
 
   revalidatePath("/campaigns");
-  revalidatePath("/");
+  revalidatePath("/dashboard");
 
   return actionSuccess({ id: campaign.id });
 }

@@ -84,7 +84,7 @@ export async function createCampaignType(input: unknown): Promise<ActionResult<{
   });
 
   revalidatePath("/campaign-types");
-  revalidatePath("/");
+  revalidatePath("/dashboard");
 
   return actionSuccess({ id: campaignType.id });
 }
@@ -135,7 +135,7 @@ export async function updateCampaignType(input: unknown): Promise<ActionResult<{
 
   revalidatePath("/campaign-types");
   revalidatePath(`/campaign-types/${id}`);
-  revalidatePath("/");
+  revalidatePath("/dashboard");
 
   return actionSuccess({ id });
 }
@@ -178,7 +178,7 @@ export async function deleteCampaignType(input: unknown): Promise<ActionResult> 
   });
 
   revalidatePath("/campaign-types");
-  revalidatePath("/");
+  revalidatePath("/dashboard");
 
   return actionSuccess(undefined);
 }
@@ -270,7 +270,7 @@ export async function upsertCampaignTypeFields(
 
   revalidatePath("/campaign-types");
   revalidatePath(`/campaign-types/${campaignTypeId}`);
-  revalidatePath("/");
+  revalidatePath("/dashboard");
 
   return actionSuccess({ id: campaignTypeId });
 }

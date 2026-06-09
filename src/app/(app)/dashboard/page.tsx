@@ -6,7 +6,7 @@ import { StatCards } from "@/components/dashboard/stat-cards";
 import { Button } from "@/components/ui/button";
 import { getDashboardData } from "@/lib/data/dashboard";
 
-export default async function HomePage() {
+export default async function DashboardPage() {
   const [session, dashboard] = await Promise.all([auth(), getDashboardData()]);
   const firstName = session?.user?.name?.split(/\s+/)[0];
 
