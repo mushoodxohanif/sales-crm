@@ -22,5 +22,9 @@ export const reorderLeadStagesSchema = z.object({
   stageIds: z.array(z.string().cuid()).min(1),
 });
 
+export const deleteLeadStageSchema = z.object({
+  id: z.string().cuid(),
+});
+
 export type CreateLeadStageInput = z.infer<typeof createLeadStageSchema>;
 export type UpdateLeadStageInput = z.infer<typeof updateLeadStageSchema>;
