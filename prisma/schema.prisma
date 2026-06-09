@@ -1,0 +1,139 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id        String       @id @default(cuid())
+  googleId  String       @unique
+  email     String       @unique
+  name      String?
+  image     String?
+  imports   LeadImport[]
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+}
+
+enum FieldType {
+  TEXT
+  TEXTAREA
+  EMAIL
+  PHONE
+  URL
+  NUMBER
+  DATE
+  SELECT
+  MULTI_SELECT
+  CHECKBOX
+}
+
+enum CampaignStatus {
+  ACTIVE
+  ARCHIVED
+}
+
+enum ImportStatus {
+  UPLOADED
+  ANALYZED
+  COMMITTED
+  FAILED
+}
+
+model CampaignType {
+  id          String              @id @default(cuid())
+  name        String
+  slug        String              @unique
+  description String?
+  fields      CampaignTypeField[]
+  campaigns   Campaign[]
+  createdAt   DateTime            @default(now())
+  updatedAt   DateTime            @updatedAt
+}
+
+model CampaignTypeField {
+  id             String           @id @default(cuid())
+  campaignTypeId String
+  campaignType   CampaignType     @relation(fields: [campaignTypeId], references: [id], onDelete: Cascade)
+  key            String
+  label          String
+  fieldType      FieldType
+  required       Boolean          @default(false)
+  sortOrder      Int              @default(0)
+  options        Json?
+  fieldValues    LeadFieldValue[]
+
+  @@unique([campaignTypeId, key])
+}
+
+model Campaign {
+  id             String         @id @default(cuid())
+  name           String
+  campaignTypeId String
+  campaignType   CampaignType   @relation(fields: [campaignTypeId], references: [id], onDelete: Restrict)
+  stages         LeadStage[]
+  leads          Lead[]
+  imports        LeadImport[]
+  status         CampaignStatus @default(ACTIVE)
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+}
+
+model LeadStage {
+  id         String   @id @default(cuid())
+  campaignId String
+  campaign   Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  name       String
+  slug       String
+  sortOrder  Int      @default(0)
+  color      String?
+  isDefault  Boolean  @default(false)
+  leads      Lead[]   @relation("LeadCurrentStage")
+
+  @@unique([campaignId, slug])
+}
+
+model Lead {
+  id             String           @id @default(cuid())
+  campaignId     String
+  campaign       Campaign         @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  currentStageId String
+  currentStage   LeadStage        @relation("LeadCurrentStage", fields: [currentStageId], references: [id], onDelete: Restrict)
+  fieldValues    LeadFieldValue[]
+  sourceImportId String?
+  sourceImport   LeadImport?      @relation(fields: [sourceImportId], references: [id], onDelete: SetNull)
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+}
+
+model LeadFieldValue {
+  id      String            @id @default(cuid())
+  leadId  String
+  lead    Lead              @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  fieldId String
+  field   CampaignTypeField @relation(fields: [fieldId], references: [id], onDelete: Cascade)
+  value   Json
+
+  @@unique([leadId, fieldId])
+}
+
+model LeadImport {
+  id           String       @id @default(cuid())
+  fileName     String
+  fileType     String
+  rowCount     Int
+  status       ImportStatus @default(UPLOADED)
+  analysis     Json?
+  mapping      Json?
+  campaignId   String?
+  campaign     Campaign?    @relation(fields: [campaignId], references: [id], onDelete: SetNull)
+  userId       String
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  leads        Lead[]
+  errorMessage String?
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+}
