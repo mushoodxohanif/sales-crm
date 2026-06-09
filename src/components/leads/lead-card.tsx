@@ -1,24 +1,8 @@
 "use client";
 
-import { GripVerticalIcon } from "lucide-react";
-import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { useTransition } from "react";
-import { toast } from "sonner";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { moveLeadToStage } from "@/lib/actions/leads";
-import {
-  formatFieldValueForDisplay,
-  getLeadDisplayTitle,
-  type LeadFieldDefinition,
-} from "@/lib/leads/field-values";
-import { cn } from "@/lib/utils";
+import { PencilIcon } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { getLeadDisplayTitle, type LeadFieldDefinition } from "@/lib/leads/field-values";
 
 export interface LeadKanbanLead {
   id: string;
@@ -33,103 +17,35 @@ export interface LeadKanbanStage {
   slug: string;
   color: string | null;
   sortOrder: number;
+  isDefault: boolean;
   leads: LeadKanbanLead[];
 }
 
 interface LeadCardProps {
-  campaignId: string;
   fields: LeadFieldDefinition[];
-  stages: Array<{ id: string; name: string }>;
   lead: LeadKanbanLead;
   disabled?: boolean;
-  dragHandleProps?: React.HTMLAttributes<HTMLButtonElement>;
+  onEdit?: () => void;
 }
 
-export function LeadCard({
-  campaignId,
-  fields,
-  stages,
-  lead,
-  disabled = false,
-  dragHandleProps,
-}: LeadCardProps) {
-  const router = useRouter();
-  const [isPending, startTransition] = useTransition();
+export function LeadCard({ fields, lead, disabled = false, onEdit }: LeadCardProps) {
   const title = getLeadDisplayTitle(fields, lead.fieldValues);
-  const previewFields = fields.filter((field) => field.required).slice(0, 2);
-  const displayFields = previewFields.length > 0 ? previewFields : fields.slice(0, 2);
-  const valueByFieldId = new Map(
-    lead.fieldValues.map((fieldValue) => [fieldValue.fieldId, fieldValue.value]),
-  );
-
-  function handleStageChange(stageId: string | null) {
-    if (!stageId || stageId === lead.currentStageId) {
-      return;
-    }
-
-    startTransition(async () => {
-      const result = await moveLeadToStage({
-        leadId: lead.id,
-        stageId,
-      });
-
-      if (!result.success) {
-        toast.error(result.error);
-        return;
-      }
-
-      toast.success("Lead moved");
-      router.refresh();
-    });
-  }
 
   return (
-    <article className="space-y-3 rounded-lg border bg-background p-3 shadow-xs">
-      <div className="flex items-start gap-2">
-        {dragHandleProps ? (
-          <button
-            type="button"
-            className={cn(
-              "mt-0.5 flex size-7 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground",
-              disabled && "pointer-events-none opacity-50",
-            )}
-            aria-label="Drag lead"
-            {...dragHandleProps}
-          >
-            <GripVerticalIcon className="size-4" />
-          </button>
-        ) : null}
-        <div className="min-w-0 flex-1 space-y-1">
-          <Link
-            href={`/campaigns/${campaignId}/leads/${lead.id}`}
-            className="font-medium text-sm hover:underline"
-          >
-            {title}
-          </Link>
-          {displayFields.map((field) => (
-            <p key={field.id} className="text-muted-foreground truncate text-xs">
-              {field.label}: {formatFieldValueForDisplay(valueByFieldId.get(field.id))}
-            </p>
-          ))}
-        </div>
-      </div>
-
-      <Select
-        value={lead.currentStageId}
-        onValueChange={handleStageChange}
-        disabled={disabled || isPending}
+    <>
+      <span className="min-w-0 flex-1 truncate text-xs font-medium">{title}</span>
+      <Button
+        type="button"
+        variant="ghost"
+        size="icon-sm"
+        className="size-6 shrink-0"
+        disabled={disabled}
+        aria-label={`Edit ${title}`}
+        onPointerDown={(event) => event.stopPropagation()}
+        onClick={onEdit}
       >
-        <SelectTrigger className="w-full" size="sm">
-          <SelectValue placeholder="Move to stage" />
-        </SelectTrigger>
-        <SelectContent>
-          {stages.map((stage) => (
-            <SelectItem key={stage.id} value={stage.id}>
-              {stage.name}
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
-    </article>
+        <PencilIcon className="size-3" />
+      </Button>
+    </>
   );
 }

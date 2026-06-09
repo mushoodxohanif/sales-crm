@@ -1,6 +1,5 @@
 import { FileUpIcon, FolderKanbanIcon, LayersIcon, UsersIcon } from "lucide-react";
 import Link from "next/link";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 interface DashboardStats {
   campaignTypeCount: number;
@@ -45,38 +44,37 @@ export function StatCards({ stats }: StatCardsProps) {
         const value = stats[card.key];
 
         return (
-          <Link key={card.key} href={card.href} className="group block">
-            <Card className="h-full transition-colors group-hover:bg-muted/40">
-              <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <CardTitle className="text-sm font-medium">{card.label}</CardTitle>
-                <Icon className="text-muted-foreground size-4" />
-              </CardHeader>
-              <CardContent>
-                <p className="text-3xl font-semibold tracking-tight">{value}</p>
-                <p className="text-muted-foreground mt-1 text-xs">
-                  {card.key === "campaignCount"
-                    ? `${stats.activeCampaignCount} active`
-                    : card.description}
-                </p>
-              </CardContent>
-            </Card>
+          <Link
+            key={card.key}
+            href={card.href}
+            className="group block h-full rounded-xl border bg-card p-4 shadow-xs transition-colors group-hover:bg-muted/40"
+          >
+            <div className="flex flex-row items-center justify-between pb-2">
+              <p className="text-sm font-medium">{card.label}</p>
+              <Icon className="text-muted-foreground size-4" />
+            </div>
+            <p className="text-3xl font-semibold tracking-tight">{value}</p>
+            <p className="text-muted-foreground mt-1 text-xs">
+              {card.key === "campaignCount"
+                ? `${stats.activeCampaignCount} active`
+                : card.description}
+            </p>
           </Link>
         );
       })}
 
-      <Link href="/import" className="group block">
-        <Card className="h-full border-dashed transition-colors group-hover:bg-muted/40">
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Import leads</CardTitle>
-            <FileUpIcon className="text-muted-foreground size-4" />
-          </CardHeader>
-          <CardContent>
-            <p className="text-3xl font-semibold tracking-tight">CSV / XLSX</p>
-            <p className="text-muted-foreground mt-1 text-xs">
-              Upload a spreadsheet to bulk-create leads
-            </p>
-          </CardContent>
-        </Card>
+      <Link
+        href="/import"
+        className="group block h-full rounded-xl border border-dashed bg-card p-4 shadow-xs transition-colors group-hover:bg-muted/40"
+      >
+        <div className="flex flex-row items-center justify-between pb-2">
+          <p className="text-sm font-medium">Import leads</p>
+          <FileUpIcon className="text-muted-foreground size-4" />
+        </div>
+        <p className="text-3xl font-semibold tracking-tight">CSV / XLSX</p>
+        <p className="text-muted-foreground mt-1 text-xs">
+          Upload a spreadsheet to bulk-create leads
+        </p>
       </Link>
     </div>
   );

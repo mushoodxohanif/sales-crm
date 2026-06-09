@@ -11,19 +11,23 @@ import {
   useSensor,
   useSensors,
 } from "@dnd-kit/core";
-import { PlusIcon } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState, useTransition } from "react";
 import { toast } from "sonner";
 import { LeadCard, type LeadKanbanLead, type LeadKanbanStage } from "@/components/leads/lead-card";
-import { Button } from "@/components/ui/button";
+import { LeadEditDialog } from "@/components/leads/lead-edit-dialog";
 import { moveLeadToStage } from "@/lib/actions/leads";
 import type { LeadFieldDefinition } from "@/lib/leads/field-values";
 import { cn } from "@/lib/utils";
 
+const KANBAN_COLUMN_COUNT = 6;
+const KANBAN_COLUMN_GAP = "1rem";
+const KANBAN_COLUMN_WIDTH = `calc((100cqw - ${KANBAN_COLUMN_COUNT - 1} * ${KANBAN_COLUMN_GAP}) / ${KANBAN_COLUMN_COUNT})`;
+
 interface LeadKanbanProps {
   campaignId: string;
+  campaignName: string;
   fields: LeadFieldDefinition[];
   stages: LeadKanbanStage[];
   disabled?: boolean;
@@ -42,39 +46,38 @@ function KanbanColumn({ stage, children }: { stage: LeadKanbanStage; children: R
   return (
     <div
       ref={setNodeRef}
+      style={{ width: KANBAN_COLUMN_WIDTH, minWidth: KANBAN_COLUMN_WIDTH }}
       className={cn(
-        "flex w-72 shrink-0 flex-col gap-3 rounded-xl border bg-muted/20 p-3 transition-colors",
+        "flex h-full shrink-0 flex-col gap-2 rounded-lg border bg-muted/20 p-2 transition-colors",
         isOver && "border-primary bg-primary/5",
       )}
     >
-      <div className="flex items-center justify-between gap-2 rounded-lg border bg-muted/40 px-3 py-2">
-        <div className="flex min-w-0 items-center gap-2">
+      <div className="flex shrink-0 items-center justify-between gap-1.5 rounded-md border bg-muted/40 px-2 py-1.5">
+        <div className="flex min-w-0 items-center gap-1.5">
           <span
-            className="size-2.5 shrink-0 rounded-full"
+            className="size-2 shrink-0 rounded-full"
             style={{ backgroundColor: stage.color ?? "#6366f1" }}
           />
-          <span className="truncate font-medium text-sm">{stage.name}</span>
+          <span className="truncate font-medium text-xs">{stage.name}</span>
         </div>
-        <span className="text-muted-foreground text-xs">{stage.leads.length}</span>
+        <span className="text-muted-foreground text-[10px]">{stage.leads.length}</span>
       </div>
 
-      <div className="flex min-h-32 flex-col gap-3">{children}</div>
+      <div className="flex min-h-0 flex-1 flex-col gap-1.5 overflow-y-auto">{children}</div>
     </div>
   );
 }
 
 function DraggableLeadCard({
-  campaignId,
   fields,
-  stages,
   lead,
   disabled,
+  onEdit,
 }: {
-  campaignId: string;
   fields: LeadFieldDefinition[];
-  stages: Array<{ id: string; name: string }>;
   lead: LeadKanbanLead;
   disabled: boolean;
+  onEdit: () => void;
 }) {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: lead.id,
@@ -89,21 +92,25 @@ function DraggableLeadCard({
     : undefined;
 
   return (
-    <div ref={setNodeRef} style={style} className={cn(isDragging && "opacity-40")}>
-      <LeadCard
-        campaignId={campaignId}
-        fields={fields}
-        stages={stages}
-        lead={lead}
-        disabled={disabled}
-        dragHandleProps={{ ...attributes, ...listeners }}
-      />
-    </div>
+    <article
+      ref={setNodeRef}
+      style={style}
+      className={cn(
+        "flex items-center gap-1 rounded-md border bg-background px-1.5 py-1 shadow-xs",
+        disabled ? "cursor-default" : "cursor-grab active:cursor-grabbing",
+        isDragging && "opacity-40",
+      )}
+      {...attributes}
+      {...listeners}
+    >
+      <LeadCard fields={fields} lead={lead} disabled={disabled} onEdit={onEdit} />
+    </article>
   );
 }
 
 export function LeadKanban({
   campaignId,
+  campaignName,
   fields,
   stages: initialStages,
   disabled = false,
@@ -112,6 +119,7 @@ export function LeadKanban({
   const [isPending, startTransition] = useTransition();
   const [stages, setStages] = useState(initialStages);
   const [activeLeadId, setActiveLeadId] = useState<string | null>(null);
+  const [editingLead, setEditingLead] = useState<LeadKanbanLead | null>(null);
 
   useEffect(() => {
     setStages(initialStages);
@@ -120,7 +128,11 @@ export function LeadKanban({
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 8 } }));
 
   const totalLeads = stages.reduce((count, stage) => count + stage.leads.length, 0);
-  const stageOptions = stages.map((stage) => ({ id: stage.id, name: stage.name }));
+  const stageOptions = stages.map((stage) => ({
+    id: stage.id,
+    name: stage.name,
+    isDefault: stage.isDefault,
+  }));
   const activeLead = stages
     .flatMap((stage) => stage.leads)
     .find((lead) => lead.id === activeLeadId);
@@ -192,24 +204,7 @@ export function LeadKanban({
   }
 
   return (
-    <section className="space-y-4">
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <h2 className="text-base font-medium">Pipeline</h2>
-          <p className="text-muted-foreground text-sm">
-            {totalLeads} lead{totalLeads === 1 ? "" : "s"} across {stages.length} stage
-            {stages.length === 1 ? "" : "s"}. Drag cards between columns or use the stage dropdown
-            on each card.
-          </p>
-        </div>
-        <Button size="sm" disabled={disabled} asChild>
-          <Link href={`/campaigns/${campaignId}/leads/new`}>
-            <PlusIcon />
-            Add lead
-          </Link>
-        </Button>
-      </div>
-
+    <section className="flex min-h-0 min-w-0 flex-1 flex-col gap-3">
       {stages.length === 0 ? (
         <div className="rounded-lg border border-dashed p-8 text-center text-sm text-muted-foreground">
           Add pipeline stages before creating leads.
@@ -224,40 +219,53 @@ export function LeadKanban({
           )}
         </div>
       ) : (
-        <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
-          <div className="overflow-x-auto pb-2">
-            <div className="flex min-w-max gap-4">
-              {stages.map((stage) => (
-                <KanbanColumn key={stage.id} stage={stage}>
-                  {stage.leads.map((lead) => (
-                    <DraggableLeadCard
-                      key={lead.id}
-                      campaignId={campaignId}
-                      fields={fields}
-                      stages={stageOptions}
-                      lead={lead}
-                      disabled={disabled || isPending}
-                    />
-                  ))}
-                </KanbanColumn>
-              ))}
-            </div>
-          </div>
-
-          <DragOverlay>
-            {activeLead ? (
-              <div className="w-72 rotate-2 opacity-95">
-                <LeadCard
-                  campaignId={campaignId}
-                  fields={fields}
-                  stages={stageOptions}
-                  lead={activeLead}
-                  disabled
-                />
+        <>
+          <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
+            <div className="@container/kanban min-h-0 min-w-0 flex-1 overflow-x-auto overflow-y-hidden">
+              <div className="flex h-full w-max min-w-full gap-4 pb-2">
+                {stages.map((stage) => (
+                  <KanbanColumn key={stage.id} stage={stage}>
+                    {stage.leads.map((lead) => (
+                      <DraggableLeadCard
+                        key={lead.id}
+                        fields={fields}
+                        lead={lead}
+                        disabled={disabled || isPending}
+                        onEdit={() => setEditingLead(lead)}
+                      />
+                    ))}
+                  </KanbanColumn>
+                ))}
               </div>
-            ) : null}
-          </DragOverlay>
-        </DndContext>
+            </div>
+
+            <DragOverlay>
+              {activeLead ? (
+                <article
+                  style={{ width: KANBAN_COLUMN_WIDTH }}
+                  className="flex rotate-2 items-center gap-1 rounded-md border bg-background px-1.5 py-1 opacity-95 shadow-xs"
+                >
+                  <LeadCard fields={fields} lead={activeLead} disabled />
+                </article>
+              ) : null}
+            </DragOverlay>
+          </DndContext>
+
+          <LeadEditDialog
+            open={editingLead !== null}
+            onOpenChange={(open) => {
+              if (!open) {
+                setEditingLead(null);
+              }
+            }}
+            campaignId={campaignId}
+            campaignName={campaignName}
+            fields={fields}
+            stages={stageOptions}
+            lead={editingLead}
+            disabled={disabled}
+          />
+        </>
       )}
     </section>
   );

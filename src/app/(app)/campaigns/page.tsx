@@ -1,7 +1,7 @@
 import { PlusIcon } from "lucide-react";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import { buttonVariants } from "@/components/ui/button";
 import {
   Table,
   TableBody,
@@ -12,25 +12,18 @@ import {
 } from "@/components/ui/table";
 import { CampaignStatus } from "@/generated/prisma/client";
 import { getCampaigns } from "@/lib/data/campaigns";
+import { cn } from "@/lib/utils";
 
 export default async function CampaignsPage() {
   const campaigns = await getCampaigns();
 
   return (
-    <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-6 p-6 md:p-8">
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <div className="space-y-1">
-          <h1 className="text-3xl font-semibold tracking-tight">Campaigns</h1>
-          <p className="text-muted-foreground text-sm">
-            Lead collections with their own pipeline stages, built on a campaign type schema.
-          </p>
-        </div>
-        <Button asChild>
-          <Link href="/campaigns/new">
-            <PlusIcon />
-            New campaign
-          </Link>
-        </Button>
+    <main className="flex min-h-0 w-full min-w-0 flex-1 flex-col gap-4 overflow-auto p-4">
+      <div className="flex flex-wrap justify-end">
+        <Link href="/campaigns/new" className={buttonVariants()}>
+          <PlusIcon />
+          New campaign
+        </Link>
       </div>
 
       {campaigns.length === 0 ? (
@@ -40,12 +33,10 @@ export default async function CampaignsPage() {
             Create a campaign under a campaign type to start collecting and tracking leads through a
             pipeline.
           </p>
-          <Button className="mt-6" asChild>
-            <Link href="/campaigns/new">
-              <PlusIcon />
-              Create your first campaign
-            </Link>
-          </Button>
+          <Link href="/campaigns/new" className={cn(buttonVariants(), "mt-6")}>
+            <PlusIcon />
+            Create your first campaign
+          </Link>
         </div>
       ) : (
         <div className="rounded-xl border bg-card shadow-xs">
@@ -84,9 +75,12 @@ export default async function CampaignsPage() {
                   <TableCell>{campaign._count.stages}</TableCell>
                   <TableCell>{campaign._count.leads}</TableCell>
                   <TableCell className="text-right">
-                    <Button variant="outline" size="sm" asChild>
-                      <Link href={`/campaigns/${campaign.id}`}>Open</Link>
-                    </Button>
+                    <Link
+                      href={`/campaigns/${campaign.id}`}
+                      className={buttonVariants({ variant: "outline", size: "sm" })}
+                    >
+                      Open
+                    </Link>
                   </TableCell>
                 </TableRow>
               ))}

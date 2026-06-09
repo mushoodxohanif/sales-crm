@@ -1,8 +1,7 @@
 import { ArrowUpRightIcon, FileUpIcon, FolderKanbanIcon, LayersIcon, UserIcon } from "lucide-react";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { buttonVariants } from "@/components/ui/button";
 import type { ImportStatus } from "@/generated/prisma/client";
 import { getLeadDisplayTitle, toFieldDefinitions } from "@/lib/leads/field-values";
 
@@ -113,6 +112,26 @@ function importStatusVariant(
   }
 }
 
+function SectionHeader({
+  title,
+  description,
+  action,
+}: {
+  title: string;
+  description: string;
+  action?: React.ReactNode;
+}) {
+  return (
+    <div className="flex flex-row items-start justify-between gap-4 border-b px-4 py-3">
+      <div className="space-y-1">
+        <h2 className="font-heading text-base font-medium">{title}</h2>
+        <p className="text-sm text-muted-foreground">{description}</p>
+      </div>
+      {action}
+    </div>
+  );
+}
+
 interface RecentActivityProps {
   recentLeads: RecentLead[];
   recentCampaigns: RecentCampaign[];
@@ -129,47 +148,41 @@ export function RecentActivity({
 
   if (!hasActivity) {
     return (
-      <Card>
-        <CardHeader>
-          <CardTitle>Recent activity</CardTitle>
-          <CardDescription>
+      <section className="space-y-4">
+        <div className="space-y-1">
+          <h2 className="font-heading text-base font-medium">Recent activity</h2>
+          <p className="text-sm text-muted-foreground">
             Lead updates, new campaigns, and imports will show up here.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="flex flex-wrap gap-3">
-          <Button asChild>
-            <Link href="/campaign-types/new">
-              <LayersIcon />
-              Create campaign type
-            </Link>
-          </Button>
-          <Button variant="outline" asChild>
-            <Link href="/import">
-              <FileUpIcon />
-              Import leads
-            </Link>
-          </Button>
-        </CardContent>
-      </Card>
+          </p>
+        </div>
+        <div className="flex flex-wrap gap-3">
+          <Link href="/campaign-types/new" className={buttonVariants()}>
+            <LayersIcon />
+            Create campaign type
+          </Link>
+          <Link href="/import" className={buttonVariants({ variant: "outline" })}>
+            <FileUpIcon />
+            Import leads
+          </Link>
+        </div>
+      </section>
     );
   }
 
   return (
     <div className="grid gap-6 lg:grid-cols-2">
-      <Card>
-        <CardHeader className="flex flex-row items-start justify-between gap-4">
-          <div className="space-y-1">
-            <CardTitle>Recent leads</CardTitle>
-            <CardDescription>Latest lead updates across all campaigns.</CardDescription>
-          </div>
-          <Button variant="ghost" size="sm" asChild>
-            <Link href="/campaigns">
+      <section className="rounded-xl border bg-card shadow-xs">
+        <SectionHeader
+          title="Recent leads"
+          description="Latest lead updates across all campaigns."
+          action={
+            <Link href="/campaigns" className={buttonVariants({ variant: "ghost", size: "sm" })}>
               View campaigns
               <ArrowUpRightIcon />
             </Link>
-          </Button>
-        </CardHeader>
-        <CardContent>
+          }
+        />
+        <div className="px-4 py-3">
           {recentLeads.length === 0 ? (
             <p className="text-muted-foreground text-sm">No leads yet.</p>
           ) : (
@@ -204,24 +217,25 @@ export function RecentActivity({
               })}
             </ul>
           )}
-        </CardContent>
-      </Card>
+        </div>
+      </section>
 
       <div className="space-y-6">
-        <Card>
-          <CardHeader className="flex flex-row items-start justify-between gap-4">
-            <div className="space-y-1">
-              <CardTitle>Recent campaigns</CardTitle>
-              <CardDescription>Newly created lead collections.</CardDescription>
-            </div>
-            <Button variant="ghost" size="sm" asChild>
-              <Link href="/campaigns/new">
+        <section className="rounded-xl border bg-card shadow-xs">
+          <SectionHeader
+            title="Recent campaigns"
+            description="Newly created lead collections."
+            action={
+              <Link
+                href="/campaigns/new"
+                className={buttonVariants({ variant: "ghost", size: "sm" })}
+              >
                 New campaign
                 <ArrowUpRightIcon />
               </Link>
-            </Button>
-          </CardHeader>
-          <CardContent>
+            }
+          />
+          <div className="px-4 py-3">
             {recentCampaigns.length === 0 ? (
               <p className="text-muted-foreground text-sm">No campaigns yet.</p>
             ) : (
@@ -253,23 +267,21 @@ export function RecentActivity({
                 ))}
               </ul>
             )}
-          </CardContent>
-        </Card>
+          </div>
+        </section>
 
-        <Card>
-          <CardHeader className="flex flex-row items-start justify-between gap-4">
-            <div className="space-y-1">
-              <CardTitle>Recent imports</CardTitle>
-              <CardDescription>Spreadsheet uploads and bulk lead commits.</CardDescription>
-            </div>
-            <Button variant="ghost" size="sm" asChild>
-              <Link href="/import">
+        <section className="rounded-xl border bg-card shadow-xs">
+          <SectionHeader
+            title="Recent imports"
+            description="Spreadsheet uploads and bulk lead commits."
+            action={
+              <Link href="/import" className={buttonVariants({ variant: "ghost", size: "sm" })}>
                 Import leads
                 <ArrowUpRightIcon />
               </Link>
-            </Button>
-          </CardHeader>
-          <CardContent>
+            }
+          />
+          <div className="px-4 py-3">
             {recentImports.length === 0 ? (
               <p className="text-muted-foreground text-sm">No imports yet.</p>
             ) : (
@@ -308,8 +320,8 @@ export function RecentActivity({
                 ))}
               </ul>
             )}
-          </CardContent>
-        </Card>
+          </div>
+        </section>
       </div>
     </div>
   );

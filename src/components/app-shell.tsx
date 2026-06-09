@@ -1,7 +1,8 @@
 import { auth } from "@/auth";
+import { AppHeader } from "@/components/app-header";
 import { AppSidebar } from "@/components/app-sidebar";
-import { ModeToggle } from "@/components/mode-toggle";
-import { SidebarInset, SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
+import { PageTitleProvider } from "@/components/page-title";
+import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import { TooltipProvider } from "@/components/ui/tooltip";
 
 export async function AppShell({ children }: { children: React.ReactNode }) {
@@ -10,26 +11,23 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
   return (
     <TooltipProvider>
       <SidebarProvider defaultOpen>
-        <AppSidebar
-          user={
-            session?.user
-              ? {
-                  name: session.user.name,
-                  email: session.user.email,
-                  image: session.user.image,
-                }
-              : null
-          }
-        />
-        <SidebarInset>
-          <header className="flex h-12 shrink-0 items-center gap-2 border-b px-4">
-            <SidebarTrigger className="-ml-1" />
-            <div className="ml-auto">
-              <ModeToggle />
-            </div>
-          </header>
-          <div className="flex min-h-[calc(100svh-3.5rem)] flex-1 flex-col">{children}</div>
-        </SidebarInset>
+        <PageTitleProvider>
+          <AppSidebar
+            user={
+              session?.user
+                ? {
+                    name: session.user.name,
+                    email: session.user.email,
+                    image: session.user.image,
+                  }
+                : null
+            }
+          />
+          <SidebarInset className="flex h-svh flex-col overflow-hidden">
+            <AppHeader />
+            <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">{children}</div>
+          </SidebarInset>
+        </PageTitleProvider>
       </SidebarProvider>
     </TooltipProvider>
   );

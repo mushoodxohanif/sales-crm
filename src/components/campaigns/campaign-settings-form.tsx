@@ -1,0 +1,166 @@
+"use client";
+
+import { useRouter } from "next/navigation";
+import { useEffect, useMemo, useState, useTransition } from "react";
+import { toast } from "sonner";
+import { StageManager, type StageManagerStage } from "@/components/campaigns/stage-manager";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { archiveCampaign, restoreCampaign, saveCampaignSettings } from "@/lib/actions/campaigns";
+
+type CampaignStatusValue = "ACTIVE" | "ARCHIVED";
+
+interface CampaignSettingsFormProps {
+  campaignId: string;
+  initialName: string;
+  initialStages: StageManagerStage[];
+  status: CampaignStatusValue;
+}
+
+function isPersistedStageId(stageId: string, initialStageIds: Set<string>) {
+  return initialStageIds.has(stageId);
+}
+
+function stagesEqual(left: StageManagerStage[], right: StageManagerStage[]) {
+  if (left.length !== right.length) {
+    return false;
+  }
+
+  return left.every((stage, index) => {
+    const other = right[index];
+    return (
+      stage.id === other.id &&
+      stage.name === other.name &&
+      stage.slug === other.slug &&
+      stage.sortOrder === other.sortOrder &&
+      stage.color === other.color &&
+      stage.isDefault === other.isDefault &&
+      stage.leadCount === other.leadCount
+    );
+  });
+}
+
+export function CampaignSettingsForm({
+  campaignId,
+  initialName,
+  initialStages,
+  status,
+}: CampaignSettingsFormProps) {
+  const router = useRouter();
+  const [isPending, startTransition] = useTransition();
+  const [name, setName] = useState(initialName);
+  const [stages, setStages] = useState(initialStages);
+  const [deletedStageIds, setDeletedStageIds] = useState<string[]>([]);
+  const isArchived = status === "ARCHIVED";
+
+  const initialStageIds = useMemo(
+    () => new Set(initialStages.map((stage) => stage.id)),
+    [initialStages],
+  );
+
+  useEffect(() => {
+    setName(initialName);
+    setStages(initialStages);
+    setDeletedStageIds([]);
+  }, [initialName, initialStages]);
+
+  const hasChanges =
+    name !== initialName || deletedStageIds.length > 0 || !stagesEqual(stages, initialStages);
+
+  function handleExistingStageDelete(stageId: string) {
+    if (!isPersistedStageId(stageId, initialStageIds)) {
+      return;
+    }
+
+    setDeletedStageIds((current) => (current.includes(stageId) ? current : [...current, stageId]));
+  }
+
+  function handleSave(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+
+    startTransition(async () => {
+      const result = await saveCampaignSettings({
+        id: campaignId,
+        name,
+        stages: stages.map((stage) => ({
+          ...(isPersistedStageId(stage.id, initialStageIds) ? { id: stage.id } : {}),
+          name: stage.name,
+          slug: stage.slug,
+          color: stage.color,
+          isDefault: stage.isDefault,
+        })),
+        deletedStageIds,
+      });
+
+      if (!result.success) {
+        toast.error(result.error);
+        return;
+      }
+
+      toast.success("Campaign settings saved");
+      setDeletedStageIds([]);
+      router.refresh();
+    });
+  }
+
+  function handleArchiveToggle() {
+    startTransition(async () => {
+      const result = isArchived
+        ? await restoreCampaign({ id: campaignId })
+        : await archiveCampaign({ id: campaignId });
+
+      if (!result.success) {
+        toast.error(result.error);
+        return;
+      }
+
+      toast.success(isArchived ? "Campaign restored" : "Campaign archived");
+      router.refresh();
+    });
+  }
+
+  return (
+    <form onSubmit={handleSave} className="space-y-6">
+      <StageManager
+        stages={stages}
+        onStagesChange={setStages}
+        onExistingStageDelete={handleExistingStageDelete}
+        disabled={isArchived}
+        isPending={isPending}
+      />
+
+      <section className="space-y-4 rounded-xl border bg-card p-6 shadow-xs">
+        <div>
+          <h2 className="text-base font-medium">Campaign settings</h2>
+          <p className="text-muted-foreground text-sm">Update the campaign name or archive it.</p>
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="campaign-name">Name</Label>
+          <Input
+            id="campaign-name"
+            value={name}
+            onChange={(event) => setName(event.target.value)}
+            disabled={isPending || isArchived}
+            required
+          />
+        </div>
+
+        <div className="flex flex-wrap items-center gap-3">
+          <Button type="submit" disabled={isPending || isArchived || !hasChanges}>
+            {isPending ? "Saving..." : "Save changes"}
+          </Button>
+          <Button
+            type="button"
+            variant={isArchived ? "default" : "outline"}
+            onClick={handleArchiveToggle}
+            disabled={isPending}
+          >
+            {isArchived ? "Restore campaign" : "Archive campaign"}
+          </Button>
+        </div>
+      </section>
+    </form>
+  );
+}

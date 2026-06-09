@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { toast } from "sonner";
 import { DynamicFieldList, type DynamicFieldValue } from "@/components/leads/dynamic-field-input";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import {
   Select,
@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/select";
 import { createLead, updateLead } from "@/lib/actions/leads";
 import { type LeadFieldDefinition, mapToFieldValues } from "@/lib/leads/field-values";
+import { cn } from "@/lib/utils";
 
 interface LeadStageOption {
   id: string;
@@ -32,6 +33,9 @@ interface LeadFormProps {
   initialValues?: Record<string, DynamicFieldValue>;
   leadId?: string;
   disabled?: boolean;
+  layout?: "page" | "dialog";
+  onSaved?: () => void;
+  onCancel?: () => void;
 }
 
 function buildInitialValues(
@@ -69,6 +73,9 @@ export function LeadForm({
   initialValues,
   leadId,
   disabled = false,
+  layout = "page",
+  onSaved,
+  onCancel,
 }: LeadFormProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -107,22 +114,32 @@ export function LeadForm({
       }
 
       toast.success(leadId ? "Lead updated" : "Lead created");
-      router.push(`/campaigns/${campaignId}`);
       router.refresh();
+
+      if (layout === "dialog") {
+        onSaved?.();
+        return;
+      }
+
+      router.push(`/campaigns/${campaignId}`);
     });
   }
 
+  const isDialog = layout === "dialog";
+
   return (
-    <form onSubmit={handleSubmit} className="space-y-8">
-      <section className="space-y-4 rounded-xl border bg-card p-6 shadow-xs">
-        <div>
-          <h2 className="text-base font-medium">{leadId ? "Edit lead" : "New lead"}</h2>
-          <p className="text-muted-foreground text-sm">
-            {leadId
-              ? `Update lead details for ${campaignName}.`
-              : `Add a lead to ${campaignName} using this campaign type's field schema.`}
-          </p>
-        </div>
+    <form onSubmit={handleSubmit} className={cn(isDialog ? "space-y-4" : "space-y-8")}>
+      <section className={cn("space-y-4", !isDialog && "rounded-xl border bg-card p-6 shadow-xs")}>
+        {!isDialog ? (
+          <div>
+            <h2 className="text-base font-medium">{leadId ? "Edit lead" : "New lead"}</h2>
+            <p className="text-muted-foreground text-sm">
+              {leadId
+                ? `Update lead details for ${campaignName}.`
+                : `Add a lead to ${campaignName} using this campaign type's field schema.`}
+            </p>
+          </div>
+        ) : null}
 
         <div className="space-y-2">
           <Label htmlFor="lead-stage">Pipeline stage</Label>
@@ -154,9 +171,23 @@ export function LeadForm({
       </section>
 
       <div className="flex items-center justify-end gap-3">
-        <Button type="button" variant="outline" disabled={isPending} asChild>
-          <Link href={`/campaigns/${campaignId}`}>Cancel</Link>
-        </Button>
+        {isDialog ? (
+          <Button type="button" variant="outline" disabled={isPending} onClick={onCancel}>
+            Cancel
+          </Button>
+        ) : (
+          <Link
+            href={`/campaigns/${campaignId}`}
+            aria-disabled={isPending || undefined}
+            tabIndex={isPending ? -1 : undefined}
+            className={cn(
+              buttonVariants({ variant: "outline" }),
+              isPending && "pointer-events-none opacity-50",
+            )}
+          >
+            Cancel
+          </Link>
+        )}
         <Button type="submit" disabled={disabled || isPending || !currentStageId}>
           {isPending ? "Saving..." : leadId ? "Save changes" : "Create lead"}
         </Button>

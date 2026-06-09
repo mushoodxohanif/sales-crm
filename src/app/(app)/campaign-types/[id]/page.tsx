@@ -2,10 +2,12 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { DeleteCampaignTypeButton } from "@/components/campaign-types/delete-campaign-type-button";
 import { EditCampaignTypeForm } from "@/components/campaign-types/edit-campaign-type-form";
+import { SetPageTitle } from "@/components/page-title";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import { buttonVariants } from "@/components/ui/button";
 import { campaignTypeFieldsToBuilderValues } from "@/lib/campaign-types/serialize";
 import { getCampaignTypeWithFields } from "@/lib/data/campaign-types";
+import { cn } from "@/lib/utils";
 
 interface CampaignTypeDetailPageProps {
   params: Promise<{ id: string }>;
@@ -20,21 +22,17 @@ export default async function CampaignTypeDetailPage({ params }: CampaignTypeDet
   }
 
   return (
-    <main className="mx-auto flex w-full max-w-4xl flex-1 flex-col gap-6 p-6 md:p-8">
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <div className="space-y-3">
-          <Button variant="ghost" size="sm" className="-ml-2 w-fit" asChild>
-            <Link href="/campaign-types">Back to campaign types</Link>
-          </Button>
-          <div className="space-y-2">
-            <div className="flex flex-wrap items-center gap-2">
-              <h1 className="text-3xl font-semibold tracking-tight">{campaignType.name}</h1>
-              <Badge variant="secondary">{campaignType.slug}</Badge>
-            </div>
-            {campaignType.description ? (
-              <p className="text-muted-foreground text-sm">{campaignType.description}</p>
-            ) : null}
-          </div>
+    <main className="flex min-h-0 w-full min-w-0 flex-1 flex-col gap-4 overflow-auto p-4">
+      <SetPageTitle title={campaignType.name} />
+      <div className="flex flex-wrap items-center justify-between gap-4">
+        <div className="flex flex-wrap items-center gap-2">
+          <Link
+            href="/campaign-types"
+            className={cn(buttonVariants({ variant: "ghost", size: "sm" }), "-ml-2 w-fit")}
+          >
+            Back to campaign types
+          </Link>
+          <Badge variant="secondary">{campaignType.slug}</Badge>
         </div>
         <DeleteCampaignTypeButton
           id={campaignType.id}

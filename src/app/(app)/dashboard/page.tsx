@@ -3,7 +3,8 @@ import Link from "next/link";
 import { auth } from "@/auth";
 import { RecentActivity } from "@/components/dashboard/recent-activity";
 import { StatCards } from "@/components/dashboard/stat-cards";
-import { Button } from "@/components/ui/button";
+import { SetPageTitle } from "@/components/page-title";
+import { buttonVariants } from "@/components/ui/button";
 import { getDashboardData } from "@/lib/data/dashboard";
 
 export default async function DashboardPage() {
@@ -11,27 +12,16 @@ export default async function DashboardPage() {
   const firstName = session?.user?.name?.split(/\s+/)[0];
 
   return (
-    <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-8 p-6 md:p-8">
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <div className="space-y-1">
-          <h1 className="text-3xl font-semibold tracking-tight">
-            {firstName ? `Welcome back, ${firstName}` : "Dashboard"}
-          </h1>
-          <p className="text-muted-foreground text-sm">
-            Overview of campaign types, campaigns, leads, and recent activity across your CRM.
-          </p>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          <Button variant="outline" asChild>
-            <Link href="/import">Import leads</Link>
-          </Button>
-          <Button asChild>
-            <Link href="/campaigns/new">
-              <PlusIcon />
-              New campaign
-            </Link>
-          </Button>
-        </div>
+    <main className="flex min-h-0 w-full min-w-0 flex-1 flex-col gap-4 overflow-auto p-4">
+      <SetPageTitle title={firstName ? `Welcome back, ${firstName}` : "Dashboard"} />
+      <div className="flex flex-wrap justify-end gap-2">
+        <Link href="/import" className={buttonVariants({ variant: "outline" })}>
+          Import leads
+        </Link>
+        <Link href="/campaigns/new" className={buttonVariants()}>
+          <PlusIcon />
+          New campaign
+        </Link>
       </div>
 
       <StatCards stats={dashboard.stats} />

@@ -1,9 +1,7 @@
 "use client";
 
 import { PlusIcon, StarIcon, Trash2Icon } from "lucide-react";
-import { useRouter } from "next/navigation";
-import { useState, useTransition } from "react";
-import { toast } from "sonner";
+import { useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -18,13 +16,6 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { SortableList } from "@/components/ui/sortable-list";
-import {
-  createStage,
-  deleteStage,
-  reorderStages,
-  setDefaultStage,
-  updateStage,
-} from "@/lib/actions/lead-stages";
 import { slugify } from "@/lib/utils/slug";
 
 export interface StageManagerStage {
@@ -38,142 +29,100 @@ export interface StageManagerStage {
 }
 
 interface StageManagerProps {
-  campaignId: string;
-  initialStages: StageManagerStage[];
+  stages: StageManagerStage[];
+  onStagesChange: (stages: StageManagerStage[]) => void;
+  onExistingStageDelete?: (stageId: string) => void;
   disabled?: boolean;
+  isPending?: boolean;
 }
 
-export function StageManager({ campaignId, initialStages, disabled = false }: StageManagerProps) {
-  const router = useRouter();
-  const [isPending, startTransition] = useTransition();
-  const [stages, setStages] = useState(initialStages);
+function withSortOrder(stages: StageManagerStage[]): StageManagerStage[] {
+  return stages.map((stage, index) => ({ ...stage, sortOrder: index }));
+}
+
+function slugForStage(name: string, stages: StageManagerStage[], stageId: string): string {
+  const base = slugify(name) || "stage";
+  let candidate = base;
+  let counter = 2;
+
+  while (stages.some((stage) => stage.id !== stageId && stage.slug === candidate)) {
+    candidate = `${base}-${counter}`;
+    counter += 1;
+  }
+
+  return candidate;
+}
+
+export function StageManager({
+  stages,
+  onStagesChange,
+  onExistingStageDelete,
+  disabled = false,
+  isPending = false,
+}: StageManagerProps) {
   const [addOpen, setAddOpen] = useState(false);
   const [newName, setNewName] = useState("");
-  const [newSlug, setNewSlug] = useState("");
-  const [newSlugEdited, setNewSlugEdited] = useState(false);
   const [newColor, setNewColor] = useState("#6366f1");
 
-  function refreshAfterAction() {
-    router.refresh();
-  }
-
   function handleStageNameChange(stageId: string, name: string) {
-    setStages((current) =>
-      current.map((stage) => (stage.id === stageId ? { ...stage, name } : stage)),
-    );
-  }
-
-  function handleStageSlugChange(stageId: string, slug: string) {
-    setStages((current) =>
-      current.map((stage) => (stage.id === stageId ? { ...stage, slug } : stage)),
+    onStagesChange(
+      stages.map((stage) =>
+        stage.id === stageId
+          ? { ...stage, name, slug: slugForStage(name, stages, stageId) }
+          : stage,
+      ),
     );
   }
 
   function handleStageColorChange(stageId: string, color: string) {
-    setStages((current) =>
-      current.map((stage) => (stage.id === stageId ? { ...stage, color } : stage)),
-    );
-  }
-
-  function saveStage(stage: StageManagerStage) {
-    startTransition(async () => {
-      const result = await updateStage({
-        id: stage.id,
-        name: stage.name,
-        slug: stage.slug,
-        color: stage.color ?? undefined,
-      });
-
-      if (!result.success) {
-        toast.error(result.error);
-        return;
-      }
-
-      toast.success(`Stage "${stage.name}" updated`);
-      refreshAfterAction();
-    });
+    onStagesChange(stages.map((stage) => (stage.id === stageId ? { ...stage, color } : stage)));
   }
 
   function handleReorder(reordered: StageManagerStage[]) {
-    setStages(reordered);
-
-    startTransition(async () => {
-      const result = await reorderStages({
-        campaignId,
-        stageIds: reordered.map((stage) => stage.id),
-      });
-
-      if (!result.success) {
-        toast.error(result.error);
-        setStages(initialStages);
-        return;
-      }
-
-      refreshAfterAction();
-    });
+    onStagesChange(withSortOrder(reordered));
   }
 
   function handleSetDefault(stageId: string) {
-    startTransition(async () => {
-      const result = await setDefaultStage({ id: stageId });
-
-      if (!result.success) {
-        toast.error(result.error);
-        return;
-      }
-
-      setStages((current) =>
-        current.map((stage) => ({
-          ...stage,
-          isDefault: stage.id === stageId,
-        })),
-      );
-      toast.success("Default stage updated");
-      refreshAfterAction();
-    });
+    onStagesChange(
+      stages.map((stage) => ({
+        ...stage,
+        isDefault: stage.id === stageId,
+      })),
+    );
   }
 
   function handleDelete(stage: StageManagerStage) {
-    startTransition(async () => {
-      const result = await deleteStage({ id: stage.id });
+    if (stage.leadCount > 0 || stages.length <= 1) {
+      return;
+    }
 
-      if (!result.success) {
-        toast.error(result.error);
-        return;
-      }
-
-      toast.success(`Stage "${stage.name}" deleted`);
-      setStages((current) => current.filter((item) => item.id !== stage.id));
-      refreshAfterAction();
-    });
+    onExistingStageDelete?.(stage.id);
+    onStagesChange(withSortOrder(stages.filter((item) => item.id !== stage.id)));
   }
 
   function handleAddStage(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
-    startTransition(async () => {
-      const result = await createStage({
-        campaignId,
-        name: newName,
-        slug: newSlug,
-        sortOrder: stages.length,
-        color: newColor,
-        isDefault: false,
-      });
+    const id = crypto.randomUUID();
 
-      if (!result.success) {
-        toast.error(result.error);
-        return;
-      }
+    onStagesChange(
+      withSortOrder([
+        ...stages,
+        {
+          id,
+          name: newName,
+          slug: slugForStage(newName, stages, id),
+          sortOrder: stages.length,
+          color: newColor,
+          isDefault: false,
+          leadCount: 0,
+        },
+      ]),
+    );
 
-      toast.success("Stage added");
-      setAddOpen(false);
-      setNewName("");
-      setNewSlug("");
-      setNewSlugEdited(false);
-      setNewColor("#6366f1");
-      refreshAfterAction();
-    });
+    setAddOpen(false);
+    setNewName("");
+    setNewColor("#6366f1");
   }
 
   return (
@@ -207,28 +156,8 @@ export function StageManager({ campaignId, initialStages, disabled = false }: St
                   <Input
                     id="new-stage-name"
                     value={newName}
-                    onChange={(event) => {
-                      const value = event.target.value;
-                      setNewName(value);
-                      if (!newSlugEdited) {
-                        setNewSlug(slugify(value));
-                      }
-                    }}
+                    onChange={(event) => setNewName(event.target.value)}
                     placeholder="Follow-up"
-                    required
-                    disabled={isPending}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="new-stage-slug">Slug</Label>
-                  <Input
-                    id="new-stage-slug"
-                    value={newSlug}
-                    onChange={(event) => {
-                      setNewSlugEdited(true);
-                      setNewSlug(event.target.value);
-                    }}
-                    placeholder="follow-up"
                     required
                     disabled={isPending}
                   />
@@ -258,7 +187,7 @@ export function StageManager({ campaignId, initialStages, disabled = false }: St
                   Cancel
                 </Button>
                 <Button type="submit" disabled={isPending}>
-                  {isPending ? "Adding..." : "Add stage"}
+                  Add stage
                 </Button>
               </DialogFooter>
             </form>
@@ -286,23 +215,13 @@ export function StageManager({ campaignId, initialStages, disabled = false }: St
                   disabled={disabled || isPending}
                   aria-label={`Color for ${stage.name}`}
                 />
-                <div className="grid min-w-0 flex-1 gap-3 sm:grid-cols-2">
-                  <div className="space-y-1">
-                    <Label className="text-xs text-muted-foreground">Name</Label>
-                    <Input
-                      value={stage.name}
-                      onChange={(event) => handleStageNameChange(stage.id, event.target.value)}
-                      disabled={disabled || isPending}
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <Label className="text-xs text-muted-foreground">Slug</Label>
-                    <Input
-                      value={stage.slug}
-                      onChange={(event) => handleStageSlugChange(stage.id, event.target.value)}
-                      disabled={disabled || isPending}
-                    />
-                  </div>
+                <div className="min-w-0 flex-1 space-y-1">
+                  <Label className="text-xs text-muted-foreground">Name</Label>
+                  <Input
+                    value={stage.name}
+                    onChange={(event) => handleStageNameChange(stage.id, event.target.value)}
+                    disabled={disabled || isPending}
+                  />
                 </div>
               </div>
 
@@ -324,15 +243,6 @@ export function StageManager({ campaignId, initialStages, disabled = false }: St
                   </Button>
                 )}
                 <Badge variant="outline">{stage.leadCount} leads</Badge>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => saveStage(stage)}
-                  disabled={disabled || isPending}
-                >
-                  Save
-                </Button>
                 <Button
                   type="button"
                   variant="destructive"

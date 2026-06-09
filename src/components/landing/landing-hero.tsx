@@ -1,7 +1,7 @@
 import { ArrowRightIcon, SparklesIcon } from "lucide-react";
 import { SignInButton } from "@/components/landing/sign-in-button";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import { buttonVariants } from "@/components/ui/button";
 
 interface LandingHeroProps {
   callbackUrl?: string;
@@ -37,9 +37,9 @@ export function LandingHero({ callbackUrl }: LandingHeroProps) {
               Get started
               <ArrowRightIcon />
             </SignInButton>
-            <Button size="lg" variant="outline" asChild>
-              <a href="#features">See features</a>
-            </Button>
+            <a href="#features" className={buttonVariants({ size: "lg", variant: "outline" })}>
+              See features
+            </a>
           </div>
         </div>
 

@@ -13,7 +13,6 @@ import { useCallback, useState, useTransition } from "react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -57,6 +56,26 @@ const MATCH_BADGE: Record<
 function MatchBadge({ score }: { score: MatchScore }) {
   const config = MATCH_BADGE[score];
   return <Badge variant={config.variant}>{config.label}</Badge>;
+}
+
+function WizardSection({
+  title,
+  description,
+  children,
+}: {
+  title: React.ReactNode;
+  description?: React.ReactNode;
+  children?: React.ReactNode;
+}) {
+  return (
+    <section className="space-y-4">
+      <div className="space-y-1">
+        <h2 className="font-heading flex items-center gap-2 text-base font-medium">{title}</h2>
+        {description ? <div className="text-sm text-muted-foreground">{description}</div> : null}
+      </div>
+      {children}
+    </section>
+  );
 }
 
 function TypeMatchCard({
@@ -272,86 +291,62 @@ export function ImportWizard() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-center gap-2 text-sm">
-        {(["upload", "analyze", "review"] as const).map((wizardStep, index) => {
-          const labels = { upload: "Upload", analyze: "Analyze", review: "Review & import" };
-          const active =
-            step === wizardStep ||
-            (step === "committing" && wizardStep === "review") ||
-            (step === "review" && wizardStep !== "upload") ||
-            (step === "analyze" && wizardStep === "upload");
-
-          return (
-            <div key={wizardStep} className="flex items-center gap-2">
-              {index > 0 && <span className="text-muted-foreground">→</span>}
-              <span className={active ? "font-medium text-foreground" : "text-muted-foreground"}>
-                {labels[wizardStep]}
-              </span>
-            </div>
-          );
-        })}
-      </div>
-
       {step === "upload" && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
+        <WizardSection
+          title={
+            <>
               <UploadIcon className="size-5" />
               Upload leads file
-            </CardTitle>
-            <CardDescription>
-              Import up to 5,000 leads from a CSV or XLSX spreadsheet. Column headers are analyzed
-              automatically with heuristics and Gemini AI when needed.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <label
-              htmlFor="import-file"
-              className="flex cursor-pointer flex-col items-center justify-center gap-3 rounded-xl border border-dashed p-10 transition-colors hover:bg-muted/40"
-            >
-              <FileSpreadsheetIcon className="text-muted-foreground size-10" />
-              <div className="text-center">
-                <p className="font-medium">Choose a .csv or .xlsx file</p>
-                <p className="text-muted-foreground text-sm">Maximum 10 MB</p>
-              </div>
-              <Input
-                id="import-file"
-                type="file"
-                accept=".csv,.xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/csv"
-                className="max-w-xs file:bg-background p-0 file:h-[32px] file:px-2 file:mr-4 file:border-r file:border-input"
-                disabled={isPending}
-                onChange={handleFileChange}
-              />
-            </label>
-          </CardContent>
-        </Card>
+            </>
+          }
+          description="Import up to 5,000 leads from a CSV or XLSX spreadsheet. Column headers are analyzed automatically with heuristics and Gemini AI when needed."
+        >
+          <label
+            htmlFor="import-file"
+            className="flex cursor-pointer flex-col items-center justify-center gap-3 rounded-xl border border-dashed p-10 transition-colors hover:bg-muted/40"
+          >
+            <FileSpreadsheetIcon className="text-muted-foreground size-10" />
+            <div className="text-center">
+              <p className="font-medium">Choose a .csv or .xlsx file</p>
+              <p className="text-muted-foreground text-sm">Maximum 10 MB</p>
+            </div>
+            <Input
+              id="import-file"
+              type="file"
+              accept=".csv,.xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/csv"
+              className="max-w-xs file:bg-background p-0 file:h-[32px] file:px-2 file:mr-4 file:border-r file:border-input"
+              disabled={isPending}
+              onChange={handleFileChange}
+            />
+          </label>
+        </WizardSection>
       )}
 
       {(step === "analyze" || step === "committing") && (
-        <Card>
-          <CardContent className="flex items-center gap-3 py-10">
-            <Loader2Icon className="size-5 animate-spin" />
-            <div>
-              <p className="font-medium">
-                {step === "analyze" ? "Parsing and analyzing file..." : "Importing leads..."}
-              </p>
-              <p className="text-muted-foreground text-sm">
-                {fileName ? `${fileName} · ${rowCount.toLocaleString()} rows` : "Please wait"}
-              </p>
-            </div>
-          </CardContent>
-        </Card>
+        <div className="flex items-center gap-3 py-10">
+          <Loader2Icon className="size-5 animate-spin" />
+          <div>
+            <p className="font-medium">
+              {step === "analyze" ? "Parsing and analyzing file..." : "Importing leads..."}
+            </p>
+            <p className="text-muted-foreground text-sm">
+              {fileName ? `${fileName} · ${rowCount.toLocaleString()} rows` : "Please wait"}
+            </p>
+          </div>
+        </div>
       )}
 
       {step === "review" && analysis && mapping && (
         <div className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
+          <WizardSection
+            title={
+              <>
                 <CheckCircle2Icon className="size-5 text-green-600" />
                 Analysis complete
-              </CardTitle>
-              <CardDescription className="flex flex-wrap items-center gap-2">
+              </>
+            }
+            description={
+              <span className="flex flex-wrap items-center gap-2">
                 <span>
                   {fileName} · {rowCount.toLocaleString()} rows · {analysis.fields.length} fields
                   detected
@@ -362,19 +357,16 @@ export function ImportWizard() {
                     Gemini assisted
                   </Badge>
                 )}
-              </CardDescription>
-            </CardHeader>
-          </Card>
+              </span>
+            }
+          />
 
           {matchResult?.typeMatches.some((match) => match.score !== "none") && (
-            <Card>
-              <CardHeader>
-                <CardTitle>Match existing campaign types</CardTitle>
-                <CardDescription>
-                  Pick a matched type to add leads to an existing campaign, or create a new one.
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-3">
+            <WizardSection
+              title="Match existing campaign types"
+              description="Pick a matched type to add leads to an existing campaign, or create a new one."
+            >
+              <div className="space-y-3">
                 {matchResult.typeMatches
                   .filter((match) => match.score !== "none")
                   .map((match) => (
@@ -393,16 +385,12 @@ export function ImportWizard() {
                       }}
                     />
                   ))}
-              </CardContent>
-            </Card>
+              </div>
+            </WizardSection>
           )}
 
-          <Card>
-            <CardHeader>
-              <CardTitle>Destination</CardTitle>
-              <CardDescription>Choose where these leads should land.</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
+          <WizardSection title="Destination" description="Choose where these leads should land.">
+            <div className="space-y-4">
               <div className="flex flex-wrap gap-2">
                 {(
                   [
@@ -529,17 +517,14 @@ export function ImportWizard() {
                   </div>
                 </div>
               )}
-            </CardContent>
-          </Card>
+            </div>
+          </WizardSection>
 
-          <Card>
-            <CardHeader>
-              <CardTitle>Field mapping</CardTitle>
-              <CardDescription>
-                Review inferred fields and map file columns before importing.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
+          <WizardSection
+            title="Field mapping"
+            description="Review inferred fields and map file columns before importing."
+          >
+            <div className="space-y-4">
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -632,8 +617,8 @@ export function ImportWizard() {
                   </Table>
                 </div>
               </div>
-            </CardContent>
-          </Card>
+            </div>
+          </WizardSection>
 
           <div className="flex items-center justify-between gap-3 rounded-xl border bg-muted/30 p-4">
             <div className="flex items-start gap-2 text-sm">

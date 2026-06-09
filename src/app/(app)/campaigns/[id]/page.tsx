@@ -1,14 +1,15 @@
+import { PlusIcon } from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { EditCampaignForm } from "@/components/campaigns/edit-campaign-form";
-import { StageManager } from "@/components/campaigns/stage-manager";
+import { CampaignSettingsForm } from "@/components/campaigns/campaign-settings-form";
 import { LeadKanban } from "@/components/leads/lead-kanban";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import { SetPageTitle } from "@/components/page-title";
+import { buttonVariants } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { CampaignStatus } from "@/generated/prisma/client";
 import { getCampaignWithStagesAndLeads } from "@/lib/data/leads";
 import { toFieldDefinitions } from "@/lib/leads/field-values";
+import { cn } from "@/lib/utils";
 
 interface CampaignDetailPageProps {
   params: Promise<{ id: string }>;
@@ -24,7 +25,6 @@ export default async function CampaignDetailPage({ params }: CampaignDetailPageP
 
   const isArchived = campaign.status === CampaignStatus.ARCHIVED;
   const fields = toFieldDefinitions(campaign.campaignType.fields);
-  const totalLeads = campaign.stages.reduce((count, stage) => count + stage.leads.length, 0);
 
   const stages = campaign.stages.map((stage) => ({
     id: stage.id,
@@ -42,6 +42,7 @@ export default async function CampaignDetailPage({ params }: CampaignDetailPageP
     slug: stage.slug,
     color: stage.color,
     sortOrder: stage.sortOrder,
+    isDefault: stage.isDefault,
     leads: stage.leads.map((lead) => ({
       id: lead.id,
       currentStageId: lead.currentStageId,
@@ -54,44 +55,50 @@ export default async function CampaignDetailPage({ params }: CampaignDetailPageP
   }));
 
   return (
-    <main className="mx-auto flex w-full max-w-7xl flex-1 flex-col gap-6 p-6 md:p-8">
-      <div className="space-y-3">
-        <Button variant="ghost" size="sm" className="-ml-2 w-fit" asChild>
-          <Link href="/campaigns">Back to campaigns</Link>
-        </Button>
-        <div className="flex flex-wrap items-center gap-2">
-          <h1 className="text-3xl font-semibold tracking-tight">{campaign.name}</h1>
-          <Badge variant="secondary">{campaign.campaignType.name}</Badge>
-          {isArchived ? <Badge variant="outline">Archived</Badge> : null}
+    <main className="flex min-h-0 min-w-0 flex-1 flex-col gap-3 overflow-hidden p-4">
+      <SetPageTitle title={campaign.name} />
+
+      <Tabs
+        defaultValue="pipeline"
+        className="flex min-h-0 min-w-0 flex-1 flex-col gap-2 overflow-hidden"
+      >
+        <div className="flex shrink-0 items-center justify-between gap-4">
+          <TabsList>
+            <TabsTrigger value="pipeline">Pipeline</TabsTrigger>
+            <TabsTrigger value="settings">Settings</TabsTrigger>
+          </TabsList>
+          <Link
+            href={`/campaigns/${campaign.id}/leads/new`}
+            aria-disabled={isArchived || undefined}
+            tabIndex={isArchived ? -1 : undefined}
+            className={cn(
+              buttonVariants({ size: "sm" }),
+              isArchived && "pointer-events-none opacity-50",
+            )}
+          >
+            <PlusIcon />
+            Add lead
+          </Link>
         </div>
-        <p className="text-muted-foreground text-sm">
-          {totalLeads} lead{totalLeads === 1 ? "" : "s"} across {campaign.stages.length} stage
-          {campaign.stages.length === 1 ? "" : "s"}
-        </p>
-      </div>
 
-      <Tabs defaultValue="pipeline">
-        <TabsList>
-          <TabsTrigger value="pipeline">Pipeline</TabsTrigger>
-          <TabsTrigger value="settings">Settings</TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="pipeline" className="mt-4">
-          <section className="rounded-xl border bg-card p-6 shadow-xs">
-            <LeadKanban
-              campaignId={campaign.id}
-              fields={fields}
-              stages={kanbanStages}
-              disabled={isArchived}
-            />
-          </section>
+        <TabsContent
+          value="pipeline"
+          className="mt-0 flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden"
+        >
+          <LeadKanban
+            campaignId={campaign.id}
+            campaignName={campaign.name}
+            fields={fields}
+            stages={kanbanStages}
+            disabled={isArchived}
+          />
         </TabsContent>
 
-        <TabsContent value="settings" className="mt-4 space-y-6">
-          <StageManager campaignId={campaign.id} initialStages={stages} disabled={isArchived} />
-          <EditCampaignForm
+        <TabsContent value="settings" className="mt-0 min-h-0 flex-1 overflow-auto">
+          <CampaignSettingsForm
             campaignId={campaign.id}
             initialName={campaign.name}
+            initialStages={stages}
             status={campaign.status}
           />
         </TabsContent>

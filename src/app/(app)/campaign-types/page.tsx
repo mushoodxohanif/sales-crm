@@ -2,7 +2,7 @@ import { PlusIcon } from "lucide-react";
 import Link from "next/link";
 import { DeleteCampaignTypeButton } from "@/components/campaign-types/delete-campaign-type-button";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import { buttonVariants } from "@/components/ui/button";
 import {
   Table,
   TableBody,
@@ -12,25 +12,18 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { getCampaignTypes } from "@/lib/data/campaign-types";
+import { cn } from "@/lib/utils";
 
 export default async function CampaignTypesPage() {
   const campaignTypes = await getCampaignTypes();
 
   return (
-    <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-6 p-6 md:p-8">
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <div className="space-y-1">
-          <h1 className="text-3xl font-semibold tracking-tight">Campaign types</h1>
-          <p className="text-muted-foreground text-sm">
-            Define reusable lead schemas for channels like LinkedIn, Facebook, or Hunter.io.
-          </p>
-        </div>
-        <Button asChild>
-          <Link href="/campaign-types/new">
-            <PlusIcon />
-            New campaign type
-          </Link>
-        </Button>
+    <main className="flex min-h-0 w-full min-w-0 flex-1 flex-col gap-4 overflow-auto p-4">
+      <div className="flex flex-wrap justify-end">
+        <Link href="/campaign-types/new" className={buttonVariants()}>
+          <PlusIcon />
+          New campaign type
+        </Link>
       </div>
 
       {campaignTypes.length === 0 ? (
@@ -39,12 +32,10 @@ export default async function CampaignTypesPage() {
           <p className="text-muted-foreground mx-auto mt-2 max-w-md text-sm">
             Create a campaign type to define the custom fields your leads will use across campaigns.
           </p>
-          <Button className="mt-6" asChild>
-            <Link href="/campaign-types/new">
-              <PlusIcon />
-              Create your first campaign type
-            </Link>
-          </Button>
+          <Link href="/campaign-types/new" className={cn(buttonVariants(), "mt-6")}>
+            <PlusIcon />
+            Create your first campaign type
+          </Link>
         </div>
       ) : (
         <div className="rounded-xl border bg-card shadow-xs">
@@ -83,9 +74,12 @@ export default async function CampaignTypesPage() {
                   <TableCell>{campaignType._count.campaigns}</TableCell>
                   <TableCell className="text-right">
                     <div className="flex justify-end gap-2">
-                      <Button variant="outline" size="sm" asChild>
-                        <Link href={`/campaign-types/${campaignType.id}`}>Edit</Link>
-                      </Button>
+                      <Link
+                        href={`/campaign-types/${campaignType.id}`}
+                        className={buttonVariants({ variant: "outline", size: "sm" })}
+                      >
+                        Edit
+                      </Link>
                       <DeleteCampaignTypeButton
                         id={campaignType.id}
                         name={campaignType.name}
