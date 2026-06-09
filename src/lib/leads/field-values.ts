@@ -11,6 +11,7 @@ export type LeadFieldDefinition = {
   label: string;
   fieldType: FieldTypeValue;
   required: boolean;
+  showOnKanbanCard: boolean;
   sortOrder: number;
   options: string[];
 };
@@ -30,6 +31,7 @@ export function toFieldDefinitions(
     label: string;
     fieldType: FieldTypeValue;
     required: boolean;
+    showOnKanbanCard: boolean;
     sortOrder: number;
     options: unknown;
   }>,
@@ -40,6 +42,7 @@ export function toFieldDefinitions(
     label: field.label,
     fieldType: field.fieldType,
     required: field.required,
+    showOnKanbanCard: field.showOnKanbanCard,
     sortOrder: field.sortOrder,
     options: parseFieldOptions(field.options),
   }));
@@ -79,6 +82,12 @@ export function mapToFieldValues(
     fieldId: field.id,
     value: values[field.id] ?? null,
   }));
+}
+
+export function getKanbanCardFields(fields: LeadFieldDefinition[]): LeadFieldDefinition[] {
+  return fields
+    .filter((field) => field.showOnKanbanCard)
+    .sort((left, right) => left.sortOrder - right.sortOrder);
 }
 
 export function getLeadDisplayTitle(

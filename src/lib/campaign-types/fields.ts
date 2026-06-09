@@ -35,6 +35,8 @@ export function fieldTypeRequiresOptions(fieldType: FieldTypeValue) {
   return fieldType === "SELECT" || fieldType === "MULTI_SELECT";
 }
 
+export const MAX_KANBAN_CARD_FIELDS = 2;
+
 export type FieldBuilderValue = {
   clientId: string;
   id?: string;
@@ -42,6 +44,7 @@ export type FieldBuilderValue = {
   label: string;
   fieldType: FieldTypeValue;
   required: boolean;
+  showOnKanbanCard: boolean;
   sortOrder: number;
   options: string[];
 };
@@ -53,6 +56,7 @@ export function createEmptyField(sortOrder: number): FieldBuilderValue {
     label: "",
     fieldType: "TEXT",
     required: false,
+    showOnKanbanCard: false,
     sortOrder,
     options: [],
   };
@@ -76,6 +80,7 @@ export function fieldBuilderToInput(field: FieldBuilderValue) {
     label: field.label,
     fieldType: field.fieldType,
     required: field.required,
+    showOnKanbanCard: field.showOnKanbanCard,
     sortOrder: field.sortOrder,
     ...(fieldTypeRequiresOptions(field.fieldType) ? { options: field.options } : {}),
   };

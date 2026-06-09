@@ -23,6 +23,7 @@ import {
   type FieldTypeValue,
   fieldTypeRequiresOptions,
   formatOptionsInput,
+  MAX_KANBAN_CARD_FIELDS,
   parseOptionsInput,
 } from "@/lib/campaign-types/fields";
 import { fieldKeyFromLabel } from "@/lib/utils/slug";
@@ -74,13 +75,17 @@ export function FieldBuilder({ fields, onChange, disabled }: FieldBuilderProps) 
     onChange(reorderFields([...fields, createEmptyField(fields.length)]));
   }
 
+  const kanbanCardFieldCount = fields.filter((field) => field.showOnKanbanCard).length;
+  const kanbanCardLimitReached = kanbanCardFieldCount >= MAX_KANBAN_CARD_FIELDS;
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between gap-3">
         <div>
           <h2 className="text-base font-medium">Custom fields</h2>
           <p className="text-muted-foreground text-sm">
-            Define the data you collect for leads under this campaign type.
+            Define the data you collect for leads under this campaign type. Choose up to{" "}
+            {MAX_KANBAN_CARD_FIELDS} fields to show on kanban cards.
           </p>
         </div>
         <Button type="button" variant="outline" size="sm" onClick={addField} disabled={disabled}>
@@ -180,7 +185,7 @@ export function FieldBuilder({ fields, onChange, disabled }: FieldBuilderProps) 
                     </SelectContent>
                   </Select>
                 </div>
-                <div className="flex items-end pb-1">
+                <div className="flex flex-col justify-end gap-2 pb-1">
                   <Label className="flex items-center gap-2 font-normal">
                     <Checkbox
                       checked={field.required}
@@ -190,6 +195,16 @@ export function FieldBuilder({ fields, onChange, disabled }: FieldBuilderProps) 
                       disabled={disabled}
                     />
                     Required field
+                  </Label>
+                  <Label className="flex items-center gap-2 font-normal">
+                    <Checkbox
+                      checked={field.showOnKanbanCard}
+                      onCheckedChange={(checked) =>
+                        updateField(field.clientId, { showOnKanbanCard: checked === true })
+                      }
+                      disabled={disabled || (kanbanCardLimitReached && !field.showOnKanbanCard)}
+                    />
+                    Show on kanban card
                   </Label>
                 </div>
               </div>

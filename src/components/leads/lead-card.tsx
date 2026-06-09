@@ -2,7 +2,12 @@
 
 import { PencilIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { getLeadDisplayTitle, type LeadFieldDefinition } from "@/lib/leads/field-values";
+import {
+  formatFieldValueForDisplay,
+  getKanbanCardFields,
+  getLeadDisplayTitle,
+  type LeadFieldDefinition,
+} from "@/lib/leads/field-values";
 
 export interface LeadKanbanLead {
   id: string;
@@ -29,16 +34,42 @@ interface LeadCardProps {
 }
 
 export function LeadCard({ fields, lead, disabled = false, onEdit }: LeadCardProps) {
+  const kanbanFields = getKanbanCardFields(fields);
+  const valueByFieldId = new Map(
+    lead.fieldValues.map((fieldValue) => [fieldValue.fieldId, fieldValue.value]),
+  );
   const title = getLeadDisplayTitle(fields, lead.fieldValues);
 
   return (
     <>
-      <span className="min-w-0 flex-1 truncate text-xs font-medium">{title}</span>
+      <div className="min-w-0 flex-1">
+        {kanbanFields.length > 0 ? (
+          kanbanFields.map((field, index) => {
+            const value = valueByFieldId.get(field.id);
+            const displayValue = formatFieldValueForDisplay(value);
+
+            return (
+              <p
+                key={field.id}
+                className={
+                  index === 0
+                    ? "truncate text-xs font-medium"
+                    : "text-muted-foreground truncate text-[11px]"
+                }
+              >
+                {displayValue}
+              </p>
+            );
+          })
+        ) : (
+          <p className="truncate text-xs font-medium">{title}</p>
+        )}
+      </div>
       <Button
         type="button"
         variant="ghost"
         size="icon-sm"
-        className="size-6 shrink-0"
+        className="size-6 shrink-0 self-start"
         disabled={disabled}
         aria-label={`Edit ${title}`}
         onPointerDown={(event) => event.stopPropagation()}

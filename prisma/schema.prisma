@@ -61,9 +61,10 @@ model CampaignTypeField {
   key            String
   label          String
   fieldType      FieldType
-  required       Boolean          @default(false)
-  sortOrder      Int              @default(0)
-  options        Json?
+  required         Boolean          @default(false)
+  showOnKanbanCard Boolean          @default(false)
+  sortOrder        Int              @default(0)
+  options          Json?
   fieldValues    LeadFieldValue[]
 
   @@unique([campaignTypeId, key])

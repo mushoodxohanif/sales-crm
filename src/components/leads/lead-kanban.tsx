@@ -96,7 +96,7 @@ function DraggableLeadCard({
       ref={setNodeRef}
       style={style}
       className={cn(
-        "flex items-center gap-1 rounded-md border bg-background px-1.5 py-1 shadow-xs",
+        "flex items-start gap-1 rounded-md border bg-background px-1.5 py-1 shadow-xs",
         disabled ? "cursor-default" : "cursor-grab active:cursor-grabbing",
         isDragging && "opacity-40",
       )}

@@ -22,6 +22,7 @@ type RecentLead = {
         label: string;
         fieldType: Parameters<typeof toFieldDefinitions>[0][number]["fieldType"];
         required: boolean;
+        showOnKanbanCard: boolean;
         sortOrder: number;
         options: unknown;
       }>;
