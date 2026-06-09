@@ -318,7 +318,7 @@ export function ImportWizard() {
                 id="import-file"
                 type="file"
                 accept=".csv,.xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/csv"
-                className="max-w-xs"
+                className="max-w-xs file:bg-background p-0 file:h-[32px] file:px-2 file:mr-4 file:border-r file:border-input"
                 disabled={isPending}
                 onChange={handleFileChange}
               />
