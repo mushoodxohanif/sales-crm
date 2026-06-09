@@ -13,35 +13,37 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { deleteCampaignType } from "@/lib/actions/campaign-types";
+import { deleteCampaign } from "@/lib/actions/campaigns";
 
-interface DeleteCampaignTypeButtonProps {
+interface DeleteCampaignButtonProps {
   id: string;
   name: string;
-  campaignCount: number;
+  leadCount: number;
+  size?: "default" | "sm";
 }
 
-export function DeleteCampaignTypeButton({
+export function DeleteCampaignButton({
   id,
   name,
-  campaignCount,
-}: DeleteCampaignTypeButtonProps) {
+  leadCount,
+  size = "default",
+}: DeleteCampaignButtonProps) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
 
   function handleDelete() {
     startTransition(async () => {
-      const result = await deleteCampaignType({ id });
+      const result = await deleteCampaign({ id });
 
       if (!result.success) {
         toast.error(result.error);
         return;
       }
 
-      toast.success("Campaign type deleted");
+      toast.success("Campaign deleted");
       setOpen(false);
-      router.push("/campaign-types");
+      router.push("/campaigns");
       router.refresh();
     });
   }
@@ -49,19 +51,17 @@ export function DeleteCampaignTypeButton({
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button variant="destructive" size="sm">
+        <Button variant="destructive" size={size}>
           Delete
         </Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Delete campaign type</DialogTitle>
+          <DialogTitle>Delete campaign</DialogTitle>
           <DialogDescription>
-            This will permanently delete &quot;{name}&quot; and its field schema
-            {campaignCount > 0
-              ? `, along with ${campaignCount} campaign${campaignCount === 1 ? "" : "s"} and their leads`
-              : ""}
-            . This cannot be undone.
+            This will permanently delete &quot;{name}&quot;
+            {leadCount > 0 ? ` and all ${leadCount} lead${leadCount === 1 ? "" : "s"} in it` : ""}.
+            This cannot be undone.
           </DialogDescription>
         </DialogHeader>
         <DialogFooter>
@@ -74,7 +74,7 @@ export function DeleteCampaignTypeButton({
             Cancel
           </Button>
           <Button type="button" variant="destructive" onClick={handleDelete} disabled={isPending}>
-            {isPending ? "Deleting..." : "Delete campaign type"}
+            {isPending ? "Deleting..." : "Delete campaign"}
           </Button>
         </DialogFooter>
       </DialogContent>

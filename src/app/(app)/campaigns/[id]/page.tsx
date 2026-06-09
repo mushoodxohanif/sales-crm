@@ -24,6 +24,7 @@ export default async function CampaignDetailPage({ params }: CampaignDetailPageP
   }
 
   const isArchived = campaign.status === CampaignStatus.ARCHIVED;
+  const leadCount = campaign.stages.reduce((count, stage) => count + stage.leads.length, 0);
   const fields = toFieldDefinitions(campaign.campaignType.fields);
 
   const stages = campaign.stages.map((stage) => ({
@@ -100,6 +101,7 @@ export default async function CampaignDetailPage({ params }: CampaignDetailPageP
             initialName={campaign.name}
             initialStages={stages}
             status={campaign.status}
+            leadCount={leadCount}
           />
         </TabsContent>
       </Tabs>

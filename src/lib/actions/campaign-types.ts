@@ -168,15 +168,19 @@ export async function deleteCampaignType(input: unknown): Promise<ActionResult> 
     return actionError("Campaign type not found.");
   }
 
-  if (campaignType._count.campaigns > 0) {
-    return actionError(
-      "Cannot delete a campaign type that has campaigns. Archive or remove its campaigns first.",
-    );
-  }
+  await db.$transaction(async (tx) => {
+    if (campaignType._count.campaigns > 0) {
+      await tx.campaign.deleteMany({
+        where: { campaignTypeId: id },
+      });
+    }
 
-  await db.campaignType.delete({
-    where: { id },
+    await tx.campaignType.delete({
+      where: { id },
+    });
   });
+
+  revalidatePath("/campaigns");
 
   revalidatePath("/campaign-types");
   revalidatePath("/dashboard");

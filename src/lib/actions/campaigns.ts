@@ -9,6 +9,7 @@ import { db } from "@/lib/db";
 import {
   archiveCampaignSchema,
   createCampaignSchema,
+  deleteCampaignSchema,
   saveCampaignSettingsSchema,
   updateCampaignSchema,
 } from "@/lib/validators/campaign";
@@ -299,6 +300,39 @@ export async function saveCampaignSettings(input: unknown): Promise<ActionResult
   revalidateCampaignPaths(id);
 
   return actionSuccess({ id });
+}
+
+export async function deleteCampaign(input: unknown): Promise<ActionResult> {
+  const authError = await requireAuth();
+  if (authError) {
+    return authError;
+  }
+
+  const parsed = deleteCampaignSchema.safeParse(input);
+
+  if (!parsed.success) {
+    return actionError(formatZodError(parsed.error));
+  }
+
+  const { id } = parsed.data;
+
+  const existing = await db.campaign.findUnique({
+    where: { id },
+    select: { id: true },
+  });
+
+  if (!existing) {
+    return actionError("Campaign not found.");
+  }
+
+  await db.campaign.delete({
+    where: { id },
+  });
+
+  revalidateCampaignPaths(id);
+  revalidatePath("/campaigns");
+
+  return actionSuccess(undefined);
 }
 
 export async function restoreCampaign(input: unknown): Promise<ActionResult<{ id: string }>> {

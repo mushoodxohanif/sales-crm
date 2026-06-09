@@ -1,5 +1,6 @@
 import { PlusIcon } from "lucide-react";
 import Link from "next/link";
+import { DeleteCampaignButton } from "@/components/campaigns/delete-campaign-button";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
 import {
@@ -75,12 +76,20 @@ export default async function CampaignsPage() {
                   <TableCell>{campaign._count.stages}</TableCell>
                   <TableCell>{campaign._count.leads}</TableCell>
                   <TableCell className="text-right">
-                    <Link
-                      href={`/campaigns/${campaign.id}`}
-                      className={buttonVariants({ variant: "outline", size: "sm" })}
-                    >
-                      Open
-                    </Link>
+                    <div className="flex justify-end gap-2">
+                      <Link
+                        href={`/campaigns/${campaign.id}`}
+                        className={buttonVariants({ variant: "outline", size: "sm" })}
+                      >
+                        Open
+                      </Link>
+                      <DeleteCampaignButton
+                        id={campaign.id}
+                        name={campaign.name}
+                        leadCount={campaign._count.leads}
+                        size="sm"
+                      />
+                    </div>
                   </TableCell>
                 </TableRow>
               ))}

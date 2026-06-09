@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState, useTransition } from "react";
 import { toast } from "sonner";
+import { DeleteCampaignButton } from "@/components/campaigns/delete-campaign-button";
 import { StageManager, type StageManagerStage } from "@/components/campaigns/stage-manager";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -16,6 +17,7 @@ interface CampaignSettingsFormProps {
   initialName: string;
   initialStages: StageManagerStage[];
   status: CampaignStatusValue;
+  leadCount: number;
 }
 
 function isPersistedStageId(stageId: string, initialStageIds: Set<string>) {
@@ -46,6 +48,7 @@ export function CampaignSettingsForm({
   initialName,
   initialStages,
   status,
+  leadCount,
 }: CampaignSettingsFormProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -160,6 +163,16 @@ export function CampaignSettingsForm({
             {isArchived ? "Restore campaign" : "Archive campaign"}
           </Button>
         </div>
+      </section>
+
+      <section className="space-y-4 rounded-xl border border-destructive/30 bg-card p-6 shadow-xs">
+        <div>
+          <h2 className="text-base font-medium text-destructive">Danger zone</h2>
+          <p className="text-muted-foreground text-sm">
+            Permanently delete this campaign and all of its leads.
+          </p>
+        </div>
+        <DeleteCampaignButton id={campaignId} name={name} leadCount={leadCount} />
       </section>
     </form>
   );

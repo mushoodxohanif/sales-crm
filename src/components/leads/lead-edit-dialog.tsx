@@ -1,5 +1,6 @@
 "use client";
 
+import { DeleteLeadButton } from "@/components/leads/delete-lead-button";
 import type { LeadKanbanLead } from "@/components/leads/lead-card";
 import { LeadForm } from "@/components/leads/lead-form";
 import {
@@ -52,8 +53,20 @@ export function LeadEditDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-lg">
         <DialogHeader>
-          <DialogTitle>{title}</DialogTitle>
-          <DialogDescription>Edit lead details for {campaignName}.</DialogDescription>
+          <div className="flex items-start justify-between gap-3">
+            <div className="space-y-1.5">
+              <DialogTitle>{title}</DialogTitle>
+              <DialogDescription>Edit lead details for {campaignName}.</DialogDescription>
+            </div>
+            <DeleteLeadButton
+              leadId={lead.id}
+              campaignId={campaignId}
+              leadTitle={title}
+              disabled={disabled}
+              size="sm"
+              onDeleted={() => onOpenChange(false)}
+            />
+          </div>
         </DialogHeader>
 
         <LeadForm

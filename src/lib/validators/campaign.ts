@@ -31,6 +31,10 @@ export const archiveCampaignSchema = z.object({
   id: z.string().cuid(),
 });
 
+export const deleteCampaignSchema = z.object({
+  id: z.string().cuid(),
+});
+
 export const saveCampaignSettingsStageSchema = z.object({
   id: z.string().cuid().optional(),
   name: z.string().min(1).max(80),
