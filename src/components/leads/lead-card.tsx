@@ -1,6 +1,6 @@
 "use client";
 
-import { PencilIcon } from "lucide-react";
+import { EllipsisVerticalIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   formatFieldValueForDisplay,
@@ -14,6 +14,7 @@ export interface LeadKanbanLead {
   currentStageId: string;
   fieldValues: Array<{ fieldId: string; value: unknown }>;
   updatedAt: string;
+  commentCount?: number;
 }
 
 export interface LeadKanbanStage {
@@ -30,10 +31,10 @@ interface LeadCardProps {
   fields: LeadFieldDefinition[];
   lead: LeadKanbanLead;
   disabled?: boolean;
-  onEdit?: () => void;
+  onOpen?: () => void;
 }
 
-export function LeadCard({ fields, lead, disabled = false, onEdit }: LeadCardProps) {
+export function LeadCard({ fields, lead, disabled = false, onOpen }: LeadCardProps) {
   const kanbanFields = getKanbanCardFields(fields);
   const valueByFieldId = new Map(
     lead.fieldValues.map((fieldValue) => [fieldValue.fieldId, fieldValue.value]),
@@ -69,13 +70,13 @@ export function LeadCard({ fields, lead, disabled = false, onEdit }: LeadCardPro
         type="button"
         variant="ghost"
         size="icon-sm"
-        className="size-6 shrink-0 self-start"
+        className="size-6 shrink-0"
         disabled={disabled}
-        aria-label={`Edit ${title}`}
+        aria-label={`Open ${title}`}
         onPointerDown={(event) => event.stopPropagation()}
-        onClick={onEdit}
+        onClick={onOpen}
       >
-        <PencilIcon className="size-3" />
+        <EllipsisVerticalIcon className="size-3.5" />
       </Button>
     </>
   );

@@ -169,6 +169,7 @@ interface DynamicFieldListProps {
   values: Record<string, DynamicFieldValue>;
   onChange: (fieldId: string, value: DynamicFieldValue) => void;
   disabled?: boolean;
+  compact?: boolean;
 }
 
 export function DynamicFieldList({
@@ -176,6 +177,7 @@ export function DynamicFieldList({
   values,
   onChange,
   disabled = false,
+  compact = false,
 }: DynamicFieldListProps) {
   if (fields.length === 0) {
     return (
@@ -183,6 +185,45 @@ export function DynamicFieldList({
         This campaign type has no custom fields. You can still create a lead and assign it to a
         stage.
       </p>
+    );
+  }
+
+  if (compact) {
+    return (
+      <div className="space-y-4">
+        {fields.map((field) => (
+          <div key={field.id} className="flex flex-col gap-1.5 sm:flex-row sm:items-start sm:gap-4">
+            {field.fieldType !== "CHECKBOX" ? (
+              <>
+                <Label
+                  htmlFor={`field-${field.id}`}
+                  className="shrink-0 text-muted-foreground text-xs sm:w-28 sm:pt-2"
+                >
+                  {field.label}
+                  {field.required ? <span className="text-destructive"> *</span> : null}
+                </Label>
+                <div className="min-w-0 flex-1">
+                  <DynamicFieldInput
+                    field={field}
+                    value={values[field.id] ?? null}
+                    onChange={(value) => onChange(field.id, value)}
+                    disabled={disabled}
+                  />
+                </div>
+              </>
+            ) : (
+              <div className="sm:pl-28">
+                <DynamicFieldInput
+                  field={field}
+                  value={values[field.id] ?? false}
+                  onChange={(value) => onChange(field.id, value)}
+                  disabled={disabled}
+                />
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
     );
   }
 

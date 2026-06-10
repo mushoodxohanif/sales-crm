@@ -62,6 +62,8 @@ export function CampaignSettingsForm({
     [initialStages],
   );
 
+  const _initialStagesKey = useMemo(() => JSON.stringify(initialStages), [initialStages]);
+
   useEffect(() => {
     setName(initialName);
     setStages(initialStages);
@@ -81,6 +83,10 @@ export function CampaignSettingsForm({
 
   function handleSave(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
+
+    if (!hasChanges) {
+      return;
+    }
 
     startTransition(async () => {
       const result = await saveCampaignSettings({

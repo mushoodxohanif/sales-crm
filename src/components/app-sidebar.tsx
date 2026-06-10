@@ -1,6 +1,13 @@
 "use client";
 
-import { FileSpreadsheetIcon, LayoutDashboardIcon, MegaphoneIcon, ShapesIcon } from "lucide-react";
+import {
+  FileSpreadsheetIcon,
+  LayoutDashboardIcon,
+  MegaphoneIcon,
+  MessageSquareIcon,
+  ShapesIcon,
+  UsersIcon,
+} from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
@@ -16,12 +23,15 @@ import {
   SidebarRail,
 } from "@/components/ui/sidebar";
 import { UserMenu } from "@/components/user-menu";
+import type { UserRole } from "@/generated/prisma/client";
 
 const navItems = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboardIcon, match: "exact" as const },
   { href: "/campaign-types", label: "Campaign types", icon: ShapesIcon, match: "prefix" as const },
   { href: "/campaigns", label: "Campaigns", icon: MegaphoneIcon, match: "prefix" as const },
   { href: "/import", label: "Import", icon: FileSpreadsheetIcon, match: "prefix" as const },
+  { href: "/messages", label: "Messages", icon: MessageSquareIcon, match: "exact" as const },
+  { href: "/team", label: "Team", icon: UsersIcon, match: "exact" as const },
 ];
 
 function isActive(pathname: string, href: string, match: "exact" | "prefix"): boolean {
@@ -37,6 +47,7 @@ interface AppSidebarProps {
     name?: string | null;
     email?: string | null;
     image?: string | null;
+    role?: UserRole | null;
   } | null;
 }
 
@@ -75,7 +86,13 @@ export function AppSidebar({ user }: AppSidebarProps) {
 
       {user ? (
         <SidebarFooter className="border-t border-sidebar-border">
-          <UserMenu variant="sidebar" name={user.name} email={user.email} image={user.image} />
+          <UserMenu
+            variant="sidebar"
+            name={user.name}
+            email={user.email}
+            image={user.image}
+            role={user.role}
+          />
         </SidebarFooter>
       ) : null}
 

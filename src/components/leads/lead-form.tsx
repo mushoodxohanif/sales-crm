@@ -22,6 +22,7 @@ interface LeadStageOption {
   id: string;
   name: string;
   isDefault: boolean;
+  color?: string | null;
 }
 
 interface LeadFormProps {
@@ -33,7 +34,8 @@ interface LeadFormProps {
   initialValues?: Record<string, DynamicFieldValue>;
   leadId?: string;
   disabled?: boolean;
-  layout?: "page" | "dialog";
+  layout?: "page" | "dialog" | "detail";
+  footerLeading?: React.ReactNode;
   onSaved?: () => void;
   onCancel?: () => void;
 }
@@ -74,6 +76,7 @@ export function LeadForm({
   leadId,
   disabled = false,
   layout = "page",
+  footerLeading,
   onSaved,
   onCancel,
 }: LeadFormProps) {
@@ -126,11 +129,24 @@ export function LeadForm({
   }
 
   const isDialog = layout === "dialog";
+  const isDetail = layout === "detail";
+  const currentStage = stages.find((stage) => stage.id === currentStageId);
+  const currentStageColor = currentStage?.color ?? "#6366f1";
 
   return (
-    <form onSubmit={handleSubmit} className={cn(isDialog ? "space-y-4" : "space-y-8")}>
-      <section className={cn("space-y-4", !isDialog && "rounded-xl border bg-card p-6 shadow-xs")}>
-        {!isDialog ? (
+    <form
+      onSubmit={handleSubmit}
+      className={cn(
+        isDetail ? "flex min-h-0 flex-1 flex-col" : isDialog ? "space-y-4" : "space-y-8",
+      )}
+    >
+      <section
+        className={cn(
+          isDetail ? "min-h-0 flex-1 space-y-6 overflow-y-auto" : "space-y-4",
+          !isDialog && !isDetail && "rounded-xl border bg-card p-6 shadow-xs",
+        )}
+      >
+        {!isDialog && !isDetail ? (
           <div>
             <h2 className="text-base font-medium">{leadId ? "Edit lead" : "New lead"}</h2>
             <p className="text-muted-foreground text-sm">
@@ -141,40 +157,92 @@ export function LeadForm({
           </div>
         ) : null}
 
-        <div className="space-y-2">
-          <Label htmlFor="lead-stage">Pipeline stage</Label>
-          <Select
-            value={currentStageId}
-            onValueChange={(value) => setCurrentStageId(value ?? "")}
-            disabled={disabled || isPending || stages.length === 0}
-          >
-            <SelectTrigger id="lead-stage" className="w-full max-w-sm">
-              <SelectValue placeholder="Select stage" />
-            </SelectTrigger>
-            <SelectContent>
-              {stages.map((stage) => (
-                <SelectItem key={stage.id} value={stage.id}>
-                  {stage.name}
-                  {stage.isDefault ? " (default)" : ""}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
+        {isDetail ? (
+          <div className="grid gap-x-8 gap-y-4 sm:grid-cols-2">
+            <div className="flex items-center gap-3">
+              <span className="w-24 shrink-0 text-muted-foreground text-xs">Stage</span>
+              <Select
+                value={currentStageId}
+                onValueChange={(value) => setCurrentStageId(value ?? "")}
+                disabled={disabled || isPending || stages.length === 0}
+              >
+                <SelectTrigger
+                  id="lead-stage"
+                  className="h-7 w-fit max-w-full gap-2 border-transparent bg-transparent px-2 shadow-none hover:bg-muted/60"
+                >
+                  <span
+                    className="size-2 shrink-0 rounded-full"
+                    style={{ backgroundColor: currentStageColor }}
+                  />
+                  <SelectValue placeholder="Select stage" />
+                </SelectTrigger>
+                <SelectContent>
+                  {stages.map((stage) => (
+                    <SelectItem key={stage.id} value={stage.id}>
+                      {stage.name}
+                      {stage.isDefault ? " (default)" : ""}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+        ) : (
+          <div className="space-y-2">
+            <Label htmlFor="lead-stage">Pipeline stage</Label>
+            <Select
+              value={currentStageId}
+              onValueChange={(value) => setCurrentStageId(value ?? "")}
+              disabled={disabled || isPending || stages.length === 0}
+            >
+              <SelectTrigger id="lead-stage" className="w-full max-w-sm">
+                <SelectValue placeholder="Select stage" />
+              </SelectTrigger>
+              <SelectContent>
+                {stages.map((stage) => (
+                  <SelectItem key={stage.id} value={stage.id}>
+                    {stage.name}
+                    {stage.isDefault ? " (default)" : ""}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        )}
 
-        <DynamicFieldList
-          fields={fields}
-          values={values}
-          onChange={handleFieldChange}
-          disabled={disabled || isPending}
-        />
+        {isDetail ? (
+          <div className="space-y-4">
+            <h3 className="font-medium text-sm">Details</h3>
+            <DynamicFieldList
+              fields={fields}
+              values={values}
+              onChange={handleFieldChange}
+              disabled={disabled || isPending}
+              compact
+            />
+          </div>
+        ) : (
+          <DynamicFieldList
+            fields={fields}
+            values={values}
+            onChange={handleFieldChange}
+            disabled={disabled || isPending}
+          />
+        )}
       </section>
 
-      <div className="flex items-center justify-end gap-3">
+      <div
+        className={cn(
+          "flex items-center justify-end gap-3",
+          isDetail && "-mx-6 shrink-0 border-t bg-background/80 px-6 py-4",
+        )}
+      >
         {isDialog ? (
           <Button type="button" variant="outline" disabled={isPending} onClick={onCancel}>
             Cancel
           </Button>
+        ) : isDetail ? (
+          footerLeading
         ) : (
           <Link
             href={`/campaigns/${campaignId}`}

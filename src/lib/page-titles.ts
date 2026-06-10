@@ -15,6 +15,15 @@ const STATIC_TITLES: Record<string, { title: string }> = {
   "/import": {
     title: "Import leads",
   },
+  "/notifications": {
+    title: "Notifications",
+  },
+  "/messages": {
+    title: "Messages",
+  },
+  "/team": {
+    title: "Team",
+  },
 };
 
 const DYNAMIC_PATTERNS: Array<{

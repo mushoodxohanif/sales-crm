@@ -1,6 +1,8 @@
 "use client";
 
 import { ChevronsUpDownIcon, LogOutIcon } from "lucide-react";
+import { NotificationSettings } from "@/components/notifications/notification-settings";
+import { UserRoleBadge } from "@/components/team/user-role-badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import {
@@ -12,12 +14,14 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { SidebarMenu, SidebarMenuButton, SidebarMenuItem } from "@/components/ui/sidebar";
+import type { UserRole } from "@/generated/prisma/client";
 import { signOutAction } from "@/lib/actions/auth";
 
 interface UserMenuProps {
   name?: string | null;
   email?: string | null;
   image?: string | null;
+  role?: UserRole | null;
   variant?: "header" | "sidebar";
 }
 
@@ -54,15 +58,18 @@ function UserAvatar({
   );
 }
 
-export function UserMenu({ name, email, image, variant = "header" }: UserMenuProps) {
+export function UserMenu({ name, email, image, role, variant = "header" }: UserMenuProps) {
   const menuContent = (
     <>
       <DropdownMenuLabel className="font-normal">
-        <div className="flex flex-col gap-1">
+        <div className="flex flex-col gap-1.5">
           {name ? <p className="text-sm font-medium leading-none">{name}</p> : null}
           {email ? <p className="text-muted-foreground text-xs leading-none">{email}</p> : null}
+          {role ? <UserRoleBadge role={role} /> : null}
         </div>
       </DropdownMenuLabel>
+      <DropdownMenuSeparator />
+      <NotificationSettings />
       <DropdownMenuSeparator />
       <DropdownMenuItem variant="destructive" asChild>
         <form action={signOutAction} className="w-full">

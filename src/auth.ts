@@ -7,6 +7,7 @@ import {
   isAllowedWorkspaceUser,
 } from "@/lib/auth/domains";
 import { db } from "@/lib/db";
+import { ensureUserNotificationPreferences } from "@/lib/notifications/preferences";
 
 const primaryDomain = getPrimaryWorkspaceDomain();
 const allowedDomains = getAllowedWorkspaceDomains();
@@ -43,7 +44,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         return false;
       }
 
-      await db.user.upsert({
+      const user = await db.user.upsert({
         where: { googleId },
         create: {
           googleId,
@@ -56,7 +57,10 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           name: profile.name ?? null,
           image: profile.picture ?? null,
         },
+        select: { id: true },
       });
+
+      await ensureUserNotificationPreferences(user.id);
 
       return true;
     },
@@ -74,9 +78,18 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
 
       return token;
     },
-    session({ session, token }) {
+    async session({ session, token }) {
       if (session.user && token.sub) {
         session.user.id = token.sub;
+
+        const user = await db.user.findUnique({
+          where: { id: token.sub },
+          select: { role: true },
+        });
+
+        if (user) {
+          session.user.role = user.role;
+        }
       }
 
       return session;

@@ -16,7 +16,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState, useTransition } from "react";
 import { toast } from "sonner";
 import { LeadCard, type LeadKanbanLead, type LeadKanbanStage } from "@/components/leads/lead-card";
-import { LeadEditDialog } from "@/components/leads/lead-edit-dialog";
+import { LeadDetailDialog } from "@/components/leads/lead-detail-dialog";
 import { moveLeadToStage } from "@/lib/actions/leads";
 import type { LeadFieldDefinition } from "@/lib/leads/field-values";
 import { cn } from "@/lib/utils";
@@ -31,6 +31,7 @@ interface LeadKanbanProps {
   fields: LeadFieldDefinition[];
   stages: LeadKanbanStage[];
   disabled?: boolean;
+  initialCommentLeadId?: string;
 }
 
 function columnId(stageId: string) {
@@ -72,12 +73,12 @@ function DraggableLeadCard({
   fields,
   lead,
   disabled,
-  onEdit,
+  onOpen,
 }: {
   fields: LeadFieldDefinition[];
   lead: LeadKanbanLead;
   disabled: boolean;
-  onEdit: () => void;
+  onOpen: () => void;
 }) {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: lead.id,
@@ -96,14 +97,14 @@ function DraggableLeadCard({
       ref={setNodeRef}
       style={style}
       className={cn(
-        "flex items-start gap-1 rounded-md border bg-background px-1.5 py-1 shadow-xs",
+        "flex items-center gap-1 rounded-md border bg-background px-1.5 py-1 shadow-xs",
         disabled ? "cursor-default" : "cursor-grab active:cursor-grabbing",
         isDragging && "opacity-40",
       )}
       {...attributes}
       {...listeners}
     >
-      <LeadCard fields={fields} lead={lead} disabled={disabled} onEdit={onEdit} />
+      <LeadCard fields={fields} lead={lead} disabled={disabled} onOpen={onOpen} />
     </article>
   );
 }
@@ -114,16 +115,35 @@ export function LeadKanban({
   fields,
   stages: initialStages,
   disabled = false,
+  initialCommentLeadId,
 }: LeadKanbanProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [stages, setStages] = useState(initialStages);
   const [activeLeadId, setActiveLeadId] = useState<string | null>(null);
-  const [editingLead, setEditingLead] = useState<LeadKanbanLead | null>(null);
+  const [selectedLead, setSelectedLead] = useState<LeadKanbanLead | null>(null);
+  const [focusCommentsOnOpen, setFocusCommentsOnOpen] = useState(false);
+  const [openedCommentFromDeepLink, setOpenedCommentFromDeepLink] = useState(false);
 
   useEffect(() => {
     setStages(initialStages);
   }, [initialStages]);
+
+  useEffect(() => {
+    if (!initialCommentLeadId) {
+      return;
+    }
+
+    const lead = stages
+      .flatMap((stage) => stage.leads)
+      .find((item) => item.id === initialCommentLeadId);
+
+    if (lead) {
+      setSelectedLead(lead);
+      setFocusCommentsOnOpen(true);
+      setOpenedCommentFromDeepLink(true);
+    }
+  }, [initialCommentLeadId, stages]);
 
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 8 } }));
 
@@ -132,6 +152,7 @@ export function LeadKanban({
     id: stage.id,
     name: stage.name,
     isDefault: stage.isDefault,
+    color: stage.color,
   }));
   const activeLead = stages
     .flatMap((stage) => stage.leads)
@@ -231,7 +252,10 @@ export function LeadKanban({
                         fields={fields}
                         lead={lead}
                         disabled={disabled || isPending}
-                        onEdit={() => setEditingLead(lead)}
+                        onOpen={() => {
+                          setFocusCommentsOnOpen(false);
+                          setSelectedLead(lead);
+                        }}
                       />
                     ))}
                   </KanbanColumn>
@@ -251,19 +275,26 @@ export function LeadKanban({
             </DragOverlay>
           </DndContext>
 
-          <LeadEditDialog
-            open={editingLead !== null}
+          <LeadDetailDialog
+            open={selectedLead !== null}
             onOpenChange={(open) => {
               if (!open) {
-                setEditingLead(null);
+                setSelectedLead(null);
+                setFocusCommentsOnOpen(false);
+
+                if (openedCommentFromDeepLink) {
+                  router.replace(`/campaigns/${campaignId}`);
+                  setOpenedCommentFromDeepLink(false);
+                }
               }
             }}
             campaignId={campaignId}
             campaignName={campaignName}
             fields={fields}
             stages={stageOptions}
-            lead={editingLead}
+            lead={selectedLead}
             disabled={disabled}
+            focusCommentsOnOpen={focusCommentsOnOpen}
           />
         </>
       )}

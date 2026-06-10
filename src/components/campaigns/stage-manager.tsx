@@ -137,7 +137,7 @@ export function StageManager({
         </div>
         <Dialog open={addOpen} onOpenChange={setAddOpen}>
           <DialogTrigger asChild>
-            <Button size="sm" disabled={disabled || isPending}>
+            <Button type="button" size="sm" disabled={disabled || isPending}>
               <PlusIcon />
               Add stage
             </Button>

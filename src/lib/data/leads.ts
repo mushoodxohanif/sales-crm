@@ -17,6 +17,9 @@ export async function getCampaignWithStagesAndLeads(campaignId: string) {
           leads: {
             include: {
               fieldValues: true,
+              _count: {
+                select: { comments: true },
+              },
             },
             orderBy: { updatedAt: "desc" },
           },

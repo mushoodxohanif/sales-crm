@@ -13,10 +13,15 @@ import { cn } from "@/lib/utils";
 
 interface CampaignDetailPageProps {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ commentLead?: string }>;
 }
 
-export default async function CampaignDetailPage({ params }: CampaignDetailPageProps) {
+export default async function CampaignDetailPage({
+  params,
+  searchParams,
+}: CampaignDetailPageProps) {
   const { id } = await params;
+  const { commentLead } = await searchParams;
   const campaign = await getCampaignWithStagesAndLeads(id);
 
   if (!campaign) {
@@ -52,6 +57,7 @@ export default async function CampaignDetailPage({ params }: CampaignDetailPageP
         value: fieldValue.value,
       })),
       updatedAt: lead.updatedAt.toISOString(),
+      commentCount: lead._count.comments,
     })),
   }));
 
@@ -92,6 +98,7 @@ export default async function CampaignDetailPage({ params }: CampaignDetailPageP
             fields={fields}
             stages={kanbanStages}
             disabled={isArchived}
+            initialCommentLeadId={commentLead}
           />
         </TabsContent>
 

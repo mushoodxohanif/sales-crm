@@ -7,15 +7,35 @@ datasource db {
   provider = "postgresql"
 }
 
+enum UserRole {
+  SALES_MANAGER
+  SALES_AGENT
+}
+
+enum NotificationType {
+  LEAD_MENTION
+  LEAD_COMMENT
+  DIRECT_MESSAGE
+}
+
 model User {
-  id        String       @id @default(cuid())
-  googleId  String       @unique
-  email     String       @unique
-  name      String?
-  image     String?
-  imports   LeadImport[]
-  createdAt DateTime     @default(now())
-  updatedAt DateTime     @updatedAt
+  id                          String                       @id @default(cuid())
+  googleId                    String                       @unique
+  email                       String                       @unique
+  name                        String?
+  image                       String?
+  role                        UserRole                     @default(SALES_AGENT)
+  imports                     LeadImport[]
+  leadComments                LeadComment[]
+  leadCommentMentions         LeadCommentMention[]
+  conversationsAsParticipant1 Conversation[]               @relation("ConversationP1")
+  conversationsAsParticipant2 Conversation[]               @relation("ConversationP2")
+  directMessages              DirectMessage[]
+  notificationsReceived       Notification[]               @relation("NotificationRecipient")
+  notificationsSent           Notification[]               @relation("NotificationActor")
+  notificationPreferences     UserNotificationPreferences?
+  createdAt                   DateTime                     @default(now())
+  updatedAt                   DateTime                     @updatedAt
 }
 
 enum FieldType {
@@ -55,17 +75,17 @@ model CampaignType {
 }
 
 model CampaignTypeField {
-  id             String           @id @default(cuid())
-  campaignTypeId String
-  campaignType   CampaignType     @relation(fields: [campaignTypeId], references: [id], onDelete: Cascade)
-  key            String
-  label          String
-  fieldType      FieldType
+  id               String           @id @default(cuid())
+  campaignTypeId   String
+  campaignType     CampaignType     @relation(fields: [campaignTypeId], references: [id], onDelete: Cascade)
+  key              String
+  label            String
+  fieldType        FieldType
   required         Boolean          @default(false)
   showOnKanbanCard Boolean          @default(false)
   sortOrder        Int              @default(0)
   options          Json?
-  fieldValues    LeadFieldValue[]
+  fieldValues      LeadFieldValue[]
 
   @@unique([campaignTypeId, key])
 }
@@ -104,6 +124,7 @@ model Lead {
   currentStageId String
   currentStage   LeadStage        @relation("LeadCurrentStage", fields: [currentStageId], references: [id], onDelete: Restrict)
   fieldValues    LeadFieldValue[]
+  comments       LeadComment[]
   sourceImportId String?
   sourceImport   LeadImport?      @relation(fields: [sourceImportId], references: [id], onDelete: SetNull)
   createdAt      DateTime         @default(now())
@@ -137,4 +158,80 @@ model LeadImport {
   errorMessage String?
   createdAt    DateTime     @default(now())
   updatedAt    DateTime     @updatedAt
+}
+
+model LeadComment {
+  id        String               @id @default(cuid())
+  leadId    String
+  lead      Lead                 @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  authorId  String
+  author    User                 @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  body      String
+  createdAt DateTime             @default(now())
+  mentions  LeadCommentMention[]
+
+  @@index([leadId, createdAt])
+}
+
+model LeadCommentMention {
+  id        String      @id @default(cuid())
+  commentId String
+  comment   LeadComment @relation(fields: [commentId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([commentId, userId])
+}
+
+model Conversation {
+  id             String          @id @default(cuid())
+  participant1Id String
+  participant2Id String
+  participant1   User            @relation("ConversationP1", fields: [participant1Id], references: [id], onDelete: Cascade)
+  participant2   User            @relation("ConversationP2", fields: [participant2Id], references: [id], onDelete: Cascade)
+  messages       DirectMessage[]
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+
+  @@unique([participant1Id, participant2Id])
+}
+
+model DirectMessage {
+  id             String       @id @default(cuid())
+  conversationId String
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  senderId       String
+  sender         User         @relation(fields: [senderId], references: [id], onDelete: Cascade)
+  body           String
+  createdAt      DateTime     @default(now())
+  readAt         DateTime?
+
+  @@index([conversationId, createdAt])
+}
+
+model Notification {
+  id             String           @id @default(cuid())
+  userId         String
+  user           User             @relation("NotificationRecipient", fields: [userId], references: [id], onDelete: Cascade)
+  type           NotificationType
+  leadId         String?
+  commentId      String?
+  conversationId String?
+  messageId      String?
+  actorId        String
+  actor          User             @relation("NotificationActor", fields: [actorId], references: [id], onDelete: Cascade)
+  preview        String
+  readAt         DateTime?
+  emailSentAt    DateTime?
+  createdAt      DateTime         @default(now())
+
+  @@index([userId, readAt, createdAt])
+}
+
+model UserNotificationPreferences {
+  userId         String   @id
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  emailEnabled   Boolean  @default(true)
+  browserEnabled Boolean  @default(true)
+  updatedAt      DateTime @updatedAt
 }
