@@ -63,7 +63,7 @@ export default async function CampaignDetailPage({
 
   return (
     <main className="flex min-h-0 min-w-0 flex-1 flex-col gap-3 overflow-hidden p-4">
-      <SetPageTitle title={campaign.name} />
+      <SetPageTitle title={campaign.name} leadCount={leadCount} />
 
       <Tabs
         defaultValue="pipeline"

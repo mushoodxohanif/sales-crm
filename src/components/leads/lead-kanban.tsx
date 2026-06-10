@@ -17,6 +17,7 @@ import { useEffect, useState, useTransition } from "react";
 import { toast } from "sonner";
 import { LeadCard, type LeadKanbanLead, type LeadKanbanStage } from "@/components/leads/lead-card";
 import { LeadDetailDialog } from "@/components/leads/lead-detail-dialog";
+import { useSetLeadCount } from "@/components/page-title";
 import { moveLeadToStage } from "@/lib/actions/leads";
 import type { LeadFieldDefinition } from "@/lib/leads/field-values";
 import { cn } from "@/lib/utils";
@@ -118,6 +119,7 @@ export function LeadKanban({
   initialCommentLeadId,
 }: LeadKanbanProps) {
   const router = useRouter();
+  const setLeadCount = useSetLeadCount();
   const [isPending, startTransition] = useTransition();
   const [stages, setStages] = useState(initialStages);
   const [activeLeadId, setActiveLeadId] = useState<string | null>(null);
@@ -148,6 +150,21 @@ export function LeadKanban({
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 8 } }));
 
   const totalLeads = stages.reduce((count, stage) => count + stage.leads.length, 0);
+
+  useEffect(() => {
+    setLeadCount?.(totalLeads);
+  }, [totalLeads, setLeadCount]);
+
+  function handleLeadDeleted(leadId: string) {
+    setStages((current) =>
+      current.map((stage) => ({
+        ...stage,
+        leads: stage.leads.filter((lead) => lead.id !== leadId),
+      })),
+    );
+    setSelectedLead(null);
+  }
+
   const stageOptions = stages.map((stage) => ({
     id: stage.id,
     name: stage.name,
@@ -295,6 +312,7 @@ export function LeadKanban({
             lead={selectedLead}
             disabled={disabled}
             focusCommentsOnOpen={focusCommentsOnOpen}
+            onLeadDeleted={handleLeadDeleted}
           />
         </>
       )}

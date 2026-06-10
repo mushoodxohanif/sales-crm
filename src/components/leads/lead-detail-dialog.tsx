@@ -31,6 +31,7 @@ interface LeadDetailDialogProps {
   lead: LeadKanbanLead | null;
   disabled?: boolean;
   focusCommentsOnOpen?: boolean;
+  onLeadDeleted?: (leadId: string) => void;
 }
 
 export function LeadDetailDialog({
@@ -43,6 +44,7 @@ export function LeadDetailDialog({
   lead,
   disabled = false,
   focusCommentsOnOpen = false,
+  onLeadDeleted,
 }: LeadDetailDialogProps) {
   if (!lead) {
     return null;
@@ -103,7 +105,10 @@ export function LeadDetailDialog({
                     leadTitle={title}
                     disabled={disabled}
                     size="sm"
-                    onDeleted={() => onOpenChange(false)}
+                    onDeleted={() => {
+                      onLeadDeleted?.(lead.id);
+                      onOpenChange(false);
+                    }}
                   />
                 }
                 onSaved={() => onOpenChange(false)}
