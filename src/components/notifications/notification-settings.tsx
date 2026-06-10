@@ -22,20 +22,6 @@ export function NotificationSettings() {
     setBrowserPermission(Notification.permission);
   }, []);
 
-  async function handleEmailToggle(enabled: boolean) {
-    setSaving(true);
-
-    try {
-      const result = await updateNotificationPreferences({ emailEnabled: enabled });
-
-      if (result.success) {
-        updatePreferences(result.data);
-      }
-    } finally {
-      setSaving(false);
-    }
-  }
-
   async function handleBrowserToggle(enabled: boolean) {
     if (enabled && browserPermission === "default" && "Notification" in window) {
       const permission = await Notification.requestPermission();
@@ -74,17 +60,6 @@ export function NotificationSettings() {
   return (
     <div className="space-y-3 px-2 py-1.5">
       <p className="text-xs font-medium text-muted-foreground">Notification settings</p>
-      <div className="flex items-center gap-2">
-        <Checkbox
-          id="email-notifications"
-          checked={preferences.emailEnabled}
-          disabled={saving}
-          onCheckedChange={(checked) => void handleEmailToggle(checked === true)}
-        />
-        <Label htmlFor="email-notifications" className="text-sm font-normal">
-          Email notifications
-        </Label>
-      </div>
       <div className="space-y-1">
         <div className="flex items-center gap-2">
           <Checkbox

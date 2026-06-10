@@ -32,6 +32,5 @@ export type DeliverNotificationInput = {
 };
 
 export type UserNotificationPreferencesPayload = {
-  emailEnabled: boolean;
   browserEnabled: boolean;
 };

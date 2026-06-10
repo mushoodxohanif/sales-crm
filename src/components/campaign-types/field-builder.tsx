@@ -206,6 +206,16 @@ export function FieldBuilder({ fields, onChange, disabled }: FieldBuilderProps) 
                     />
                     Show on lead card
                   </Label>
+                  <Label className="flex items-center gap-2 font-normal">
+                    <Checkbox
+                      checked={field.isUnique}
+                      onCheckedChange={(checked) =>
+                        updateField(field.clientId, { isUnique: checked === true })
+                      }
+                      disabled={disabled}
+                    />
+                    Should be unique
+                  </Label>
                 </div>
               </div>
 

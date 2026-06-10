@@ -8,11 +8,13 @@ import {
   getLeadDisplayTitle,
   type LeadFieldDefinition,
 } from "@/lib/leads/field-values";
+import { getDaysSinceCreation } from "@/lib/leads/kanban-filters";
 
 export interface LeadKanbanLead {
   id: string;
   currentStageId: string;
   fieldValues: Array<{ fieldId: string; value: unknown }>;
+  createdAt: string;
   updatedAt: string;
   commentCount?: number;
 }
@@ -40,10 +42,14 @@ export function LeadCard({ fields, lead, disabled = false, onOpen }: LeadCardPro
     lead.fieldValues.map((fieldValue) => [fieldValue.fieldId, fieldValue.value]),
   );
   const title = getLeadDisplayTitle(fields, lead.fieldValues);
+  const daysInPipeline = getDaysSinceCreation(lead.createdAt);
 
   return (
     <>
-      <div className="min-w-0 flex-1">
+      <div className="relative min-w-0 flex-1 pr-5">
+        <span className="text-muted-foreground absolute top-0 right-0 text-[10px] tabular-nums">
+          {daysInPipeline}d<span className="sr-only"> days in pipeline</span>
+        </span>
         {kanbanFields.length > 0 ? (
           kanbanFields.map((field, index) => {
             const value = valueByFieldId.get(field.id);

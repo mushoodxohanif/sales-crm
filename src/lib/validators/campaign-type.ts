@@ -19,6 +19,7 @@ export const campaignTypeFieldSchema = z
     fieldType: fieldTypeSchema,
     required: z.boolean().default(false),
     showOnKanbanCard: z.boolean().default(false),
+    isUnique: z.boolean().default(false),
     sortOrder: z.number().int().min(0).default(0),
     options: z.array(z.string().min(1)).optional(),
   })

@@ -284,9 +284,14 @@ function buildDefaultMapping(
   };
 }
 
-export async function commitLeadImportAction(
-  input: unknown,
-): Promise<ActionResult<{ campaignId: string; importId: string }>> {
+export async function commitLeadImportAction(input: unknown): Promise<
+  ActionResult<{
+    campaignId: string;
+    importId: string;
+    importedCount: number;
+    skippedDuplicates: number;
+  }>
+> {
   const authResult = await requireAuthUserId();
   if (!authResult.success) {
     return authResult;
@@ -324,6 +329,8 @@ export async function commitLeadImportAction(
     return actionSuccess({
       campaignId: result.campaignId,
       importId: leadImport.id,
+      importedCount: result.importedCount,
+      skippedDuplicates: result.skippedDuplicates,
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Failed to commit import.";

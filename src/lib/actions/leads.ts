@@ -5,6 +5,7 @@ import { auth } from "@/auth";
 import { CampaignStatus, type Prisma } from "@/generated/prisma/client";
 import { type ActionResult, actionError, actionSuccess } from "@/lib/actions/types";
 import { db } from "@/lib/db";
+import { assertNoDuplicateFieldValues } from "@/lib/leads/duplicates";
 import { toFieldDefinitions } from "@/lib/leads/field-values";
 import { validateLeadFieldValues } from "@/lib/leads/validation";
 import {
@@ -115,6 +116,17 @@ export async function createLead(input: unknown): Promise<ActionResult<{ id: str
     }
   }
 
+  const duplicateCheck = await assertNoDuplicateFieldValues({
+    campaignId,
+    fields,
+    fieldValues: validation.normalized,
+    client: db,
+  });
+
+  if (!duplicateCheck.success) {
+    return actionError(duplicateCheck.error);
+  }
+
   const lead = await db.lead.create({
     data: {
       campaignId,
@@ -195,6 +207,18 @@ export async function updateLead(input: unknown): Promise<ActionResult<{ id: str
     }
 
     normalizedFieldValues = validation.normalized;
+
+    const duplicateCheck = await assertNoDuplicateFieldValues({
+      campaignId: lead.campaignId,
+      fields,
+      fieldValues: normalizedFieldValues,
+      excludeLeadId: id,
+      client: db,
+    });
+
+    if (!duplicateCheck.success) {
+      return actionError(duplicateCheck.error);
+    }
   }
 
   await db.$transaction(async (tx) => {

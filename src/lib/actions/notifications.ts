@@ -20,7 +20,6 @@ async function requireUserId(): Promise<string | null> {
 }
 
 const updatePreferencesSchema = z.object({
-  emailEnabled: z.boolean().optional(),
   browserEnabled: z.boolean().optional(),
 });
 
@@ -80,12 +79,11 @@ export async function updateNotificationPreferences(
   const prefs = await db.userNotificationPreferences.update({
     where: { userId },
     data: {
-      ...(parsed.data.emailEnabled !== undefined ? { emailEnabled: parsed.data.emailEnabled } : {}),
       ...(parsed.data.browserEnabled !== undefined
         ? { browserEnabled: parsed.data.browserEnabled }
         : {}),
     },
-    select: { emailEnabled: true, browserEnabled: true },
+    select: { browserEnabled: true },
   });
 
   return actionSuccess(prefs);

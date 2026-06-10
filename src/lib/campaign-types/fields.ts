@@ -45,6 +45,7 @@ export type FieldBuilderValue = {
   fieldType: FieldTypeValue;
   required: boolean;
   showOnKanbanCard: boolean;
+  isUnique: boolean;
   sortOrder: number;
   options: string[];
 };
@@ -57,6 +58,7 @@ export function createEmptyField(sortOrder: number): FieldBuilderValue {
     fieldType: "TEXT",
     required: false,
     showOnKanbanCard: false,
+    isUnique: false,
     sortOrder,
     options: [],
   };
@@ -81,6 +83,7 @@ export function fieldBuilderToInput(field: FieldBuilderValue) {
     fieldType: field.fieldType,
     required: field.required,
     showOnKanbanCard: field.showOnKanbanCard,
+    isUnique: field.isUnique,
     sortOrder: field.sortOrder,
     ...(fieldTypeRequiresOptions(field.fieldType) ? { options: field.options } : {}),
   };

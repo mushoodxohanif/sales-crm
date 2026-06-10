@@ -283,7 +283,16 @@ export function ImportWizard() {
         return;
       }
 
-      toast.success(`Imported ${rowCount.toLocaleString()} leads`);
+      const { importedCount, skippedDuplicates } = result.data;
+
+      if (skippedDuplicates > 0) {
+        toast.success(
+          `Imported ${importedCount.toLocaleString()} leads. Skipped ${skippedDuplicates.toLocaleString()} duplicates.`,
+        );
+      } else {
+        toast.success(`Imported ${importedCount.toLocaleString()} leads`);
+      }
+
       router.push(`/campaigns/${result.data.campaignId}`);
       router.refresh();
     });

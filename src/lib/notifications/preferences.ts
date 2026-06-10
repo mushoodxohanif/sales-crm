@@ -6,11 +6,10 @@ export async function getUserNotificationPreferences(
 ): Promise<UserNotificationPreferencesPayload> {
   const prefs = await db.userNotificationPreferences.findUnique({
     where: { userId },
-    select: { emailEnabled: true, browserEnabled: true },
+    select: { browserEnabled: true },
   });
 
   return {
-    emailEnabled: prefs?.emailEnabled ?? true,
     browserEnabled: prefs?.browserEnabled ?? true,
   };
 }

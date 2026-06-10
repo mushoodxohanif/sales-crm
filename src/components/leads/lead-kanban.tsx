@@ -13,13 +13,21 @@ import {
 } from "@dnd-kit/core";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useState, useTransition } from "react";
+import { useEffect, useMemo, useState, useTransition } from "react";
 import { toast } from "sonner";
+import { KanbanToolbar } from "@/components/leads/kanban-toolbar";
 import { LeadCard, type LeadKanbanLead, type LeadKanbanStage } from "@/components/leads/lead-card";
 import { LeadDetailDialog } from "@/components/leads/lead-detail-dialog";
 import { useSetLeadCount } from "@/components/page-title";
 import { moveLeadToStage } from "@/lib/actions/leads";
 import type { LeadFieldDefinition } from "@/lib/leads/field-values";
+import {
+  applyKanbanFilters,
+  DEFAULT_KANBAN_FILTER_STATE,
+  getFilteredLeadCount,
+  hasActiveKanbanFilters,
+  type KanbanFilterState,
+} from "@/lib/leads/kanban-filters";
 import { cn } from "@/lib/utils";
 
 const KANBAN_COLUMN_COUNT = 6;
@@ -122,6 +130,7 @@ export function LeadKanban({
   const setLeadCount = useSetLeadCount();
   const [isPending, startTransition] = useTransition();
   const [stages, setStages] = useState(initialStages);
+  const [filterState, setFilterState] = useState<KanbanFilterState>(DEFAULT_KANBAN_FILTER_STATE);
   const [activeLeadId, setActiveLeadId] = useState<string | null>(null);
   const [selectedLead, setSelectedLead] = useState<LeadKanbanLead | null>(null);
   const [focusCommentsOnOpen, setFocusCommentsOnOpen] = useState(false);
@@ -149,11 +158,18 @@ export function LeadKanban({
 
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 8 } }));
 
+  const filteredStages = useMemo(
+    () => applyKanbanFilters(stages, fields, filterState),
+    [stages, fields, filterState],
+  );
+
   const totalLeads = stages.reduce((count, stage) => count + stage.leads.length, 0);
+  const filteredLeadCount = getFilteredLeadCount(filteredStages);
+  const showEmptyFilters = hasActiveKanbanFilters(filterState) && filteredLeadCount === 0;
 
   useEffect(() => {
-    setLeadCount?.(totalLeads);
-  }, [totalLeads, setLeadCount]);
+    setLeadCount?.(filteredLeadCount);
+  }, [filteredLeadCount, setLeadCount]);
 
   function handleLeadDeleted(leadId: string) {
     setStages((current) =>
@@ -258,39 +274,54 @@ export function LeadKanban({
         </div>
       ) : (
         <>
-          <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
-            <div className="@container/kanban min-h-0 min-w-0 flex-1 overflow-x-auto overflow-y-hidden">
-              <div className="flex h-full w-max min-w-full gap-4 pb-2">
-                {stages.map((stage) => (
-                  <KanbanColumn key={stage.id} stage={stage}>
-                    {stage.leads.map((lead) => (
-                      <DraggableLeadCard
-                        key={lead.id}
-                        fields={fields}
-                        lead={lead}
-                        disabled={disabled || isPending}
-                        onOpen={() => {
-                          setFocusCommentsOnOpen(false);
-                          setSelectedLead(lead);
-                        }}
-                      />
-                    ))}
-                  </KanbanColumn>
-                ))}
-              </div>
-            </div>
+          <KanbanToolbar fields={fields} state={filterState} onChange={setFilterState} />
 
-            <DragOverlay>
-              {activeLead ? (
-                <article
-                  style={{ width: KANBAN_COLUMN_WIDTH }}
-                  className="flex rotate-2 items-center gap-1 rounded-md border bg-background px-1.5 py-1 opacity-95 shadow-xs"
-                >
-                  <LeadCard fields={fields} lead={activeLead} disabled />
-                </article>
-              ) : null}
-            </DragOverlay>
-          </DndContext>
+          {showEmptyFilters ? (
+            <div className="rounded-lg border border-dashed p-8 text-center text-sm text-muted-foreground">
+              No leads match your filters.{" "}
+              <button
+                type="button"
+                className="text-foreground underline"
+                onClick={() => setFilterState(DEFAULT_KANBAN_FILTER_STATE)}
+              >
+                Clear filters
+              </button>
+            </div>
+          ) : (
+            <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
+              <div className="@container/kanban min-h-0 min-w-0 flex-1 overflow-x-auto overflow-y-hidden">
+                <div className="flex h-full w-max min-w-full gap-4 pb-2">
+                  {filteredStages.map((stage) => (
+                    <KanbanColumn key={stage.id} stage={stage}>
+                      {stage.leads.map((lead) => (
+                        <DraggableLeadCard
+                          key={lead.id}
+                          fields={fields}
+                          lead={lead}
+                          disabled={disabled || isPending}
+                          onOpen={() => {
+                            setFocusCommentsOnOpen(false);
+                            setSelectedLead(lead);
+                          }}
+                        />
+                      ))}
+                    </KanbanColumn>
+                  ))}
+                </div>
+              </div>
+
+              <DragOverlay>
+                {activeLead ? (
+                  <article
+                    style={{ width: KANBAN_COLUMN_WIDTH }}
+                    className="flex rotate-2 items-center gap-1 rounded-md border bg-background px-1.5 py-1 opacity-95 shadow-xs"
+                  >
+                    <LeadCard fields={fields} lead={activeLead} disabled />
+                  </article>
+                ) : null}
+              </DragOverlay>
+            </DndContext>
+          )}
 
           <LeadDetailDialog
             open={selectedLead !== null}

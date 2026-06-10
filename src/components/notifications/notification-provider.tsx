@@ -70,7 +70,6 @@ export function NotificationProvider({
   const [notifications, setNotifications] = useState<NotificationPayload[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [preferences, setPreferences] = useState<UserNotificationPreferencesPayload>({
-    emailEnabled: true,
     browserEnabled: true,
   });
   const [activeLeadCommentDialogId, setActiveLeadCommentDialogId] = useState<string | null>(null);

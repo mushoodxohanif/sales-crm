@@ -12,6 +12,7 @@ export function campaignTypeFieldsToBuilderValues(
     fieldType: field.fieldType as FieldTypeValue,
     required: field.required,
     showOnKanbanCard: field.showOnKanbanCard,
+    isUnique: field.isUnique,
     sortOrder: field.sortOrder,
     options: Array.isArray(field.options)
       ? field.options.filter((option): option is string => typeof option === "string")

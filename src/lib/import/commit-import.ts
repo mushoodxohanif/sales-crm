@@ -1,5 +1,11 @@
 import { FieldType, ImportStatus, type Prisma } from "@/generated/prisma/client";
 import { DEFAULT_STAGES } from "@/lib/campaigns/default-stages";
+import {
+  createImportBatchDuplicateTracker,
+  findDuplicateFieldLabel,
+  recordBatchFieldValues,
+} from "@/lib/leads/duplicates";
+import { type LeadFieldValueData, toFieldDefinitions } from "@/lib/leads/field-values";
 import type { ImportAnalysis, ImportMapping } from "./types";
 
 type TxClient = Prisma.TransactionClient;
@@ -7,7 +13,12 @@ type TxClient = Prisma.TransactionClient;
 type CampaignTypeFieldRecord = {
   id: string;
   key: string;
+  label: string;
   fieldType: FieldType;
+  required: boolean;
+  showOnKanbanCard: boolean;
+  isUnique: boolean;
+  sortOrder: number;
   options: unknown;
 };
 
@@ -164,6 +175,7 @@ export async function commitLeadImport(
   mapping: ImportMapping,
 ) {
   const { campaignId, fields } = await resolveDestination(tx, mapping);
+  const fieldDefinitions = toFieldDefinitions(fields);
 
   const defaultStage = await tx.leadStage.findFirst({
     where: {
@@ -194,12 +206,18 @@ export async function commitLeadImport(
   );
 
   const BATCH_SIZE = 100;
+  const batchDuplicates = createImportBatchDuplicateTracker();
+  let importedCount = 0;
+  let skippedDuplicates = 0;
+  const skippedDuplicateRows: number[] = [];
 
   for (let offset = 0; offset < analysis.parsed.rows.length; offset += BATCH_SIZE) {
     const batch = analysis.parsed.rows.slice(offset, offset + BATCH_SIZE);
 
-    for (const row of batch) {
+    for (const [batchIndex, row] of batch.entries()) {
+      const rowNumber = offset + batchIndex + 1;
       const fieldValues: Array<{ fieldId: string; value: Prisma.InputJsonValue }> = [];
+      const duplicateCheckValues: LeadFieldValueData[] = [];
 
       for (const [sourceColumn, fieldKey] of columnToFieldKey) {
         const field = fieldByKey.get(fieldKey);
@@ -216,6 +234,11 @@ export async function commitLeadImport(
             : [],
         );
 
+        duplicateCheckValues.push({
+          fieldId: field.id,
+          value: normalized,
+        });
+
         if (normalized === null) {
           continue;
         }
@@ -224,6 +247,20 @@ export async function commitLeadImport(
           fieldId: field.id,
           value: toJsonValue(normalized),
         });
+      }
+
+      const duplicateLabel = await findDuplicateFieldLabel({
+        campaignId,
+        fields: fieldDefinitions,
+        fieldValues: duplicateCheckValues,
+        batchValues: batchDuplicates,
+        client: tx,
+      });
+
+      if (duplicateLabel) {
+        skippedDuplicates += 1;
+        skippedDuplicateRows.push(rowNumber);
+        continue;
       }
 
       await tx.lead.create({
@@ -236,6 +273,9 @@ export async function commitLeadImport(
           },
         },
       });
+
+      recordBatchFieldValues(batchDuplicates, fieldDefinitions, duplicateCheckValues);
+      importedCount += 1;
     }
   }
 
@@ -248,5 +288,5 @@ export async function commitLeadImport(
     },
   });
 
-  return { campaignId };
+  return { campaignId, importedCount, skippedDuplicates, skippedDuplicateRows };
 }

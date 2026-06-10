@@ -56,6 +56,7 @@ export default async function CampaignDetailPage({
         fieldId: fieldValue.fieldId,
         value: fieldValue.value,
       })),
+      createdAt: lead.createdAt.toISOString(),
       updatedAt: lead.updatedAt.toISOString(),
       commentCount: lead._count.comments,
     })),

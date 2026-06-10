@@ -1,6 +1,4 @@
 import { db } from "@/lib/db";
-import { sendNotificationEmail } from "@/lib/email/notification-emails";
-import { getUserNotificationPreferences } from "@/lib/notifications/preferences";
 import { toNotificationPayload } from "@/lib/notifications/serialize";
 import type { DeliverNotificationInput, NotificationPayload } from "@/lib/notifications/types";
 import { pusherChannels } from "@/lib/realtime/channels";
@@ -44,12 +42,6 @@ export async function deliverNotification(
   const payload = toNotificationPayload(notification, campaignId);
 
   await triggerPusherEvent(pusherChannels.user(input.recipientId), "notification:created", payload);
-
-  const prefs = await getUserNotificationPreferences(input.recipientId);
-
-  if (prefs.emailEnabled) {
-    void sendNotificationEmail(notification.id);
-  }
 
   return payload;
 }

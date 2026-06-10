@@ -83,6 +83,7 @@ model CampaignTypeField {
   fieldType        FieldType
   required         Boolean          @default(false)
   showOnKanbanCard Boolean          @default(false)
+  isUnique         Boolean          @default(false)
   sortOrder        Int              @default(0)
   options          Json?
   fieldValues      LeadFieldValue[]
@@ -222,7 +223,6 @@ model Notification {
   actor          User             @relation("NotificationActor", fields: [actorId], references: [id], onDelete: Cascade)
   preview        String
   readAt         DateTime?
-  emailSentAt    DateTime?
   createdAt      DateTime         @default(now())
 
   @@index([userId, readAt, createdAt])
@@ -231,7 +231,6 @@ model Notification {
 model UserNotificationPreferences {
   userId         String   @id
   user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  emailEnabled   Boolean  @default(true)
   browserEnabled Boolean  @default(true)
   updatedAt      DateTime @updatedAt
 }

@@ -39,6 +39,7 @@ function normalizeFieldInput(field: CampaignTypeFieldInput, sortOrder: number) {
     fieldType: field.fieldType,
     required: field.required,
     showOnKanbanCard: field.showOnKanbanCard,
+    isUnique: field.isUnique,
     sortOrder,
     options: options ? (options as Prisma.InputJsonValue) : undefined,
   };

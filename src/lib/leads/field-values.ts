@@ -12,6 +12,7 @@ export type LeadFieldDefinition = {
   fieldType: FieldTypeValue;
   required: boolean;
   showOnKanbanCard: boolean;
+  isUnique: boolean;
   sortOrder: number;
   options: string[];
 };
@@ -32,6 +33,7 @@ export function toFieldDefinitions(
     fieldType: FieldTypeValue;
     required: boolean;
     showOnKanbanCard: boolean;
+    isUnique: boolean;
     sortOrder: number;
     options: unknown;
   }>,
@@ -43,6 +45,7 @@ export function toFieldDefinitions(
     fieldType: field.fieldType,
     required: field.required,
     showOnKanbanCard: field.showOnKanbanCard,
+    isUnique: field.isUnique,
     sortOrder: field.sortOrder,
     options: parseFieldOptions(field.options),
   }));
