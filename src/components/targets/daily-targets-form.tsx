@@ -16,9 +16,10 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import type { CampaignWithStagesOption, DailyTargetWithStage } from "@/lib/actions/daily-targets";
-import { saveDailyTargets } from "@/lib/actions/daily-targets";
+import { deleteDailyTarget, saveDailyTargets } from "@/lib/actions/daily-targets";
 
 type TargetDraft = {
+  id?: string;
   leadStageId: string;
   targetCount: number;
 };
@@ -30,9 +31,16 @@ interface DailyTargetsFormProps {
 
 function toDrafts(targets: DailyTargetWithStage[]): TargetDraft[] {
   return targets.map((target) => ({
+    id: target.id,
     leadStageId: target.leadStageId,
     targetCount: target.targetCount,
   }));
+}
+
+function draftsSignature(drafts: TargetDraft[]) {
+  return drafts
+    .map((target) => `${target.id ?? "new"}:${target.leadStageId}:${target.targetCount}`)
+    .join("|");
 }
 
 export function DailyTargetsForm({ initialTargets, campaigns }: DailyTargetsFormProps) {
@@ -45,6 +53,7 @@ export function DailyTargetsForm({ initialTargets, campaigns }: DailyTargetsForm
   const [newTargetCount, setNewTargetCount] = useState("5");
 
   const initialDrafts = useMemo(() => toDrafts(initialTargets), [initialTargets]);
+  const _initialTargetsSignature = useMemo(() => draftsSignature(initialDrafts), [initialDrafts]);
   const usedStageIds = useMemo(
     () => new Set(targets.map((target) => target.leadStageId)),
     [targets],
@@ -121,8 +130,25 @@ export function DailyTargetsForm({ initialTargets, campaigns }: DailyTargetsForm
     setNewTargetCount("5");
   }
 
-  function handleRemoveTarget(leadStageId: string) {
-    setTargets((current) => current.filter((target) => target.leadStageId !== leadStageId));
+  function handleRemoveTarget(target: TargetDraft) {
+    if (target.id) {
+      startTransition(async () => {
+        const result = await deleteDailyTarget({ id: target.id });
+
+        if (!result.success) {
+          toast.error(result.error);
+          return;
+        }
+
+        setTargets((current) => current.filter((item) => item.leadStageId !== target.leadStageId));
+        toast.success("Target removed");
+        await dailyTargetProgress?.refreshProgress();
+        router.refresh();
+      });
+      return;
+    }
+
+    setTargets((current) => current.filter((item) => item.leadStageId !== target.leadStageId));
   }
 
   function handleTargetCountChange(leadStageId: string, value: string) {
@@ -203,7 +229,7 @@ export function DailyTargetsForm({ initialTargets, campaigns }: DailyTargetsForm
                       type="button"
                       variant="ghost"
                       size="icon-sm"
-                      onClick={() => handleRemoveTarget(target.leadStageId)}
+                      onClick={() => handleRemoveTarget(target)}
                       disabled={isPending}
                       aria-label={`Remove target for ${stageName}`}
                     >

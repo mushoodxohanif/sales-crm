@@ -85,18 +85,32 @@ export async function saveDailyTargets(input: unknown): Promise<ActionResult> {
   }
 
   if (stageIds.length > 0) {
-    const stages = await db.leadStage.findMany({
-      where: {
-        id: { in: stageIds },
-        campaign: { status: CampaignStatus.ACTIVE },
-      },
-      select: { id: true },
-    });
+    const [stages, existingTargets] = await Promise.all([
+      db.leadStage.findMany({
+        where: { id: { in: stageIds } },
+        select: {
+          id: true,
+          campaign: { select: { status: true } },
+        },
+      }),
+      db.dailyTarget.findMany({
+        where: { userId },
+        select: { leadStageId: true },
+      }),
+    ]);
 
     if (stages.length !== stageIds.length) {
-      return actionError(
-        "One or more selected stages are invalid or belong to archived campaigns.",
-      );
+      return actionError("One or more selected stages are invalid.");
+    }
+
+    const existingStageIds = new Set(existingTargets.map((target) => target.leadStageId));
+
+    for (const stage of stages) {
+      const isNewTarget = !existingStageIds.has(stage.id);
+
+      if (isNewTarget && stage.campaign.status === CampaignStatus.ARCHIVED) {
+        return actionError("Cannot add targets for archived campaigns.");
+      }
     }
   }
 
