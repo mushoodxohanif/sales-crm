@@ -1,6 +1,6 @@
 import type { LeadKanbanLead, LeadKanbanStage } from "@/components/leads/lead-card";
 import type { FieldTypeValue } from "@/lib/campaign-types/fields";
-import type { LeadFieldDefinition } from "@/lib/leads/field-values";
+import { getKanbanCardFields, type LeadFieldDefinition } from "@/lib/leads/field-values";
 
 export type SemanticField = "name" | "designation" | "company";
 
@@ -36,8 +36,8 @@ const SEMANTIC_FIELD_CONFIG: Record<
   { keys: readonly string[]; labels: readonly string[] }
 > = {
   name: {
-    keys: ["full_name", "name"],
-    labels: ["full name", "name"],
+    keys: ["full_name", "name", "prospect_name", "contact_name"],
+    labels: ["full name", "name", "prospect name", "contact name"],
   },
   designation: {
     keys: ["job_title", "designation"],
@@ -213,6 +213,29 @@ export function getSemanticFieldStringValue(
   return getStringValue(getLeadFieldValue(lead, field.id)).trim();
 }
 
+function getKanbanSearchFields(fields: LeadFieldDefinition[]): LeadFieldDefinition[] {
+  const seen = new Set<string>();
+  const searchFields: LeadFieldDefinition[] = [];
+
+  for (const semantic of ["name", "designation", "company"] as const) {
+    const field = resolveSemanticField(fields, semantic);
+
+    if (field && !seen.has(field.id)) {
+      seen.add(field.id);
+      searchFields.push(field);
+    }
+  }
+
+  for (const field of getKanbanCardFields(fields)) {
+    if (!seen.has(field.id)) {
+      seen.add(field.id);
+      searchFields.push(field);
+    }
+  }
+
+  return searchFields;
+}
+
 export function matchesKanbanSearch(
   lead: LeadKanbanLead,
   fields: LeadFieldDefinition[],
@@ -224,17 +247,19 @@ export function matchesKanbanSearch(
     return true;
   }
 
-  const semanticFields = (["name", "designation", "company"] as const).map((semantic) =>
-    resolveSemanticField(fields, semantic),
+  const searchFields = getKanbanSearchFields(fields);
+
+  if (searchFields.length === 0) {
+    return fields.some(
+      (field) =>
+        TEXT_FILTER_TYPES.includes(field.fieldType) &&
+        getStringValue(getLeadFieldValue(lead, field.id)).toLowerCase().includes(query),
+    );
+  }
+
+  return searchFields.some((field) =>
+    getStringValue(getLeadFieldValue(lead, field.id)).toLowerCase().includes(query),
   );
-
-  return semanticFields.some((field) => {
-    if (!field) {
-      return false;
-    }
-
-    return getSemanticFieldStringValue(lead, field).toLowerCase().includes(query);
-  });
 }
 
 function matchesTextContainsFilter(

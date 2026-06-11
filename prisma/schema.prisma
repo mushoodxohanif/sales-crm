@@ -34,6 +34,8 @@ model User {
   notificationsReceived       Notification[]               @relation("NotificationRecipient")
   notificationsSent           Notification[]               @relation("NotificationActor")
   notificationPreferences     UserNotificationPreferences?
+  dailyTargets                DailyTarget[]
+  leadStageTransitions        LeadStageTransition[]
   createdAt                   DateTime                     @default(now())
   updatedAt                   DateTime                     @updatedAt
 }
@@ -105,31 +107,35 @@ model Campaign {
 }
 
 model LeadStage {
-  id         String   @id @default(cuid())
-  campaignId String
-  campaign   Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
-  name       String
-  slug       String
-  sortOrder  Int      @default(0)
-  color      String?
-  isDefault  Boolean  @default(false)
-  leads      Lead[]   @relation("LeadCurrentStage")
+  id              String                @id @default(cuid())
+  campaignId      String
+  campaign        Campaign              @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  name            String
+  slug            String
+  sortOrder       Int                   @default(0)
+  color           String?
+  isDefault       Boolean               @default(false)
+  leads           Lead[]                @relation("LeadCurrentStage")
+  dailyTargets    DailyTarget[]
+  transitionsFrom LeadStageTransition[] @relation("TransitionFromStage")
+  transitionsTo   LeadStageTransition[] @relation("TransitionToStage")
 
   @@unique([campaignId, slug])
 }
 
 model Lead {
-  id             String           @id @default(cuid())
-  campaignId     String
-  campaign       Campaign         @relation(fields: [campaignId], references: [id], onDelete: Cascade)
-  currentStageId String
-  currentStage   LeadStage        @relation("LeadCurrentStage", fields: [currentStageId], references: [id], onDelete: Restrict)
-  fieldValues    LeadFieldValue[]
-  comments       LeadComment[]
-  sourceImportId String?
-  sourceImport   LeadImport?      @relation(fields: [sourceImportId], references: [id], onDelete: SetNull)
-  createdAt      DateTime         @default(now())
-  updatedAt      DateTime         @updatedAt
+  id               String                @id @default(cuid())
+  campaignId       String
+  campaign         Campaign              @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  currentStageId   String
+  currentStage     LeadStage             @relation("LeadCurrentStage", fields: [currentStageId], references: [id], onDelete: Restrict)
+  fieldValues      LeadFieldValue[]
+  comments         LeadComment[]
+  sourceImportId   String?
+  sourceImport     LeadImport?           @relation(fields: [sourceImportId], references: [id], onDelete: SetNull)
+  stageTransitions LeadStageTransition[]
+  createdAt        DateTime              @default(now())
+  updatedAt        DateTime              @updatedAt
 }
 
 model LeadFieldValue {
@@ -233,4 +239,32 @@ model UserNotificationPreferences {
   user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   browserEnabled Boolean  @default(true)
   updatedAt      DateTime @updatedAt
+}
+
+model DailyTarget {
+  id          String    @id @default(cuid())
+  userId      String
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  leadStageId String
+  leadStage   LeadStage @relation(fields: [leadStageId], references: [id], onDelete: Cascade)
+  targetCount Int
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@unique([userId, leadStageId])
+}
+
+model LeadStageTransition {
+  id          String     @id @default(cuid())
+  leadId      String
+  lead        Lead       @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  fromStageId String?
+  fromStage   LeadStage? @relation("TransitionFromStage", fields: [fromStageId], references: [id], onDelete: SetNull)
+  toStageId   String
+  toStage     LeadStage  @relation("TransitionToStage", fields: [toStageId], references: [id], onDelete: Restrict)
+  userId      String
+  user        User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt   DateTime   @default(now())
+
+  @@index([userId, toStageId, createdAt])
 }

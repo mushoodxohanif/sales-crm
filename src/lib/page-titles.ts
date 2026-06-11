@@ -24,6 +24,9 @@ const STATIC_TITLES: Record<string, { title: string }> = {
   "/team": {
     title: "Team",
   },
+  "/targets": {
+    title: "Daily targets",
+  },
 };
 
 const DYNAMIC_PATTERNS: Array<{

@@ -7,6 +7,7 @@ import { type ActionResult, actionError, actionSuccess } from "@/lib/actions/typ
 import { db } from "@/lib/db";
 import { assertNoDuplicateFieldValues } from "@/lib/leads/duplicates";
 import { toFieldDefinitions } from "@/lib/leads/field-values";
+import { recordStageTransition } from "@/lib/leads/stage-transitions";
 import { validateLeadFieldValues } from "@/lib/leads/validation";
 import {
   createLeadSchema,
@@ -25,6 +26,11 @@ async function requireAuth() {
   return null;
 }
 
+async function requireAuthUserId(): Promise<string | null> {
+  const session = await auth();
+  return session?.user?.id ?? null;
+}
+
 function formatZodError(error: { issues: { message: string }[] }) {
   return error.issues[0]?.message ?? "Invalid input.";
 }
@@ -33,6 +39,8 @@ function revalidateLeadPaths(campaignId: string, leadId?: string) {
   revalidatePath("/campaigns");
   revalidatePath(`/campaigns/${campaignId}`);
   revalidatePath(`/campaigns/${campaignId}/leads/new`);
+  revalidatePath("/targets");
+  revalidatePath("/dashboard");
 
   if (leadId) {
     revalidatePath(`/campaigns/${campaignId}/leads/${leadId}`);
@@ -154,6 +162,11 @@ export async function updateLead(input: unknown): Promise<ActionResult<{ id: str
     return authError;
   }
 
+  const userId = await requireAuthUserId();
+  if (!userId) {
+    return actionError("You must be signed in to perform this action.");
+  }
+
   const parsed = updateLeadSchema.safeParse(input);
 
   if (!parsed.success) {
@@ -164,9 +177,13 @@ export async function updateLead(input: unknown): Promise<ActionResult<{ id: str
 
   const lead = await db.lead.findUnique({
     where: { id },
-    include: {
+    select: {
+      id: true,
+      currentStageId: true,
+      campaignId: true,
       campaign: {
-        include: {
+        select: {
+          status: true,
           campaignType: {
             include: {
               fields: {
@@ -229,6 +246,18 @@ export async function updateLead(input: unknown): Promise<ActionResult<{ id: str
       },
     });
 
+    if (currentStageId && currentStageId !== lead.currentStageId) {
+      await recordStageTransition(
+        {
+          leadId: id,
+          fromStageId: lead.currentStageId,
+          toStageId: currentStageId,
+          userId,
+        },
+        tx,
+      );
+    }
+
     if (normalizedFieldValues) {
       for (const fieldValue of normalizedFieldValues) {
         if (fieldValue.value === null) {
@@ -272,6 +301,11 @@ export async function moveLeadToStage(input: unknown): Promise<ActionResult<{ id
     return authError;
   }
 
+  const userId = await requireAuthUserId();
+  if (!userId) {
+    return actionError("You must be signed in to perform this action.");
+  }
+
   const parsed = moveLeadToStageSchema.safeParse(input);
 
   if (!parsed.success) {
@@ -284,6 +318,7 @@ export async function moveLeadToStage(input: unknown): Promise<ActionResult<{ id
     where: { id: leadId },
     select: {
       id: true,
+      currentStageId: true,
       campaignId: true,
       campaign: {
         select: { status: true },
@@ -304,9 +339,25 @@ export async function moveLeadToStage(input: unknown): Promise<ActionResult<{ id
     return actionError("Selected stage does not belong to this campaign.");
   }
 
-  await db.lead.update({
-    where: { id: leadId },
-    data: { currentStageId: stageId },
+  if (lead.currentStageId === stageId) {
+    return actionSuccess({ id: leadId });
+  }
+
+  await db.$transaction(async (tx) => {
+    await tx.lead.update({
+      where: { id: leadId },
+      data: { currentStageId: stageId },
+    });
+
+    await recordStageTransition(
+      {
+        leadId,
+        fromStageId: lead.currentStageId,
+        toStageId: stageId,
+        userId,
+      },
+      tx,
+    );
   });
 
   revalidateLeadPaths(lead.campaignId, leadId);

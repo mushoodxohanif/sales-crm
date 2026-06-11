@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { toast } from "sonner";
 import { DynamicFieldList, type DynamicFieldValue } from "@/components/leads/dynamic-field-input";
+import { useDailyTargetProgressOptional } from "@/components/targets/daily-target-progress-provider";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import {
@@ -81,11 +82,13 @@ export function LeadForm({
   onCancel,
 }: LeadFormProps) {
   const router = useRouter();
+  const dailyTargetProgress = useDailyTargetProgressOptional();
   const [isPending, startTransition] = useTransition();
   const [values, setValues] = useState(() => buildInitialValues(fields, initialValues));
   const [currentStageId, setCurrentStageId] = useState(() =>
     resolveInitialStageId(stages, initialStageId),
   );
+  const initialStage = resolveInitialStageId(stages, initialStageId);
 
   function handleFieldChange(fieldId: string, value: DynamicFieldValue) {
     setValues((current) => ({
@@ -117,6 +120,11 @@ export function LeadForm({
       }
 
       toast.success(leadId ? "Lead updated" : "Lead created");
+
+      if (leadId && currentStageId !== initialStage) {
+        await dailyTargetProgress?.refreshProgress();
+      }
+
       router.refresh();
 
       if (layout === "dialog") {

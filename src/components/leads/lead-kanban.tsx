@@ -19,6 +19,7 @@ import { KanbanToolbar } from "@/components/leads/kanban-toolbar";
 import { LeadCard, type LeadKanbanLead, type LeadKanbanStage } from "@/components/leads/lead-card";
 import { LeadDetailDialog } from "@/components/leads/lead-detail-dialog";
 import { useSetLeadCount } from "@/components/page-title";
+import { useDailyTargetProgressOptional } from "@/components/targets/daily-target-progress-provider";
 import { moveLeadToStage } from "@/lib/actions/leads";
 import type { LeadFieldDefinition } from "@/lib/leads/field-values";
 import {
@@ -128,6 +129,7 @@ export function LeadKanban({
 }: LeadKanbanProps) {
   const router = useRouter();
   const setLeadCount = useSetLeadCount();
+  const dailyTargetProgress = useDailyTargetProgressOptional();
   const [isPending, startTransition] = useTransition();
   const [stages, setStages] = useState(initialStages);
   const [filterState, setFilterState] = useState<KanbanFilterState>(DEFAULT_KANBAN_FILTER_STATE);
@@ -253,6 +255,7 @@ export function LeadKanban({
       }
 
       toast.success("Lead moved");
+      await dailyTargetProgress?.refreshProgress();
       router.refresh();
     });
   }

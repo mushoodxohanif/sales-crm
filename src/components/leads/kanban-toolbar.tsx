@@ -146,7 +146,7 @@ export function KanbanToolbar({ fields, state, onChange }: KanbanToolbarProps) {
         <Input
           value={state.search}
           onChange={(event) => onChange({ ...state, search: event.target.value })}
-          placeholder="Search name, designation, company…"
+          placeholder="Search leads…"
           className="pl-8"
         />
       </div>
