@@ -6,7 +6,6 @@ import {
   MegaphoneIcon,
   MessageSquareIcon,
   ShapesIcon,
-  TargetIcon,
   UsersIcon,
 } from "lucide-react";
 import Link from "next/link";
@@ -30,7 +29,6 @@ const navItems = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboardIcon, match: "exact" as const },
   { href: "/campaign-types", label: "Campaign types", icon: ShapesIcon, match: "prefix" as const },
   { href: "/campaigns", label: "Campaigns", icon: MegaphoneIcon, match: "prefix" as const },
-  { href: "/targets", label: "Targets", icon: TargetIcon, match: "exact" as const },
   { href: "/import", label: "Import", icon: FileSpreadsheetIcon, match: "prefix" as const },
   { href: "/messages", label: "Messages", icon: MessageSquareIcon, match: "exact" as const },
   { href: "/team", label: "Team", icon: UsersIcon, match: "exact" as const },

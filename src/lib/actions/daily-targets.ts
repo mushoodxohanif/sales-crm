@@ -5,6 +5,7 @@ import { auth } from "@/auth";
 import { CampaignStatus } from "@/generated/prisma/client";
 import { type ActionResult, actionError, actionSuccess } from "@/lib/actions/types";
 import {
+  type DailyTargetProgressSummary,
   getActiveCampaignsWithStages,
   getDailyTargetProgressForUser,
   getUserDailyTargets,
@@ -26,11 +27,7 @@ function revalidateTargetPaths() {
   revalidatePath("/dashboard");
 }
 
-export type DailyTargetProgress = {
-  completed: number;
-  target: number;
-  hasTargets: boolean;
-};
+export type DailyTargetProgress = DailyTargetProgressSummary;
 
 export type DailyTargetWithStage = Awaited<ReturnType<typeof getUserDailyTargets>>[number];
 
@@ -121,6 +118,7 @@ export async function saveDailyTargets(input: unknown): Promise<ActionResult> {
       await tx.dailyTarget.createMany({
         data: parsed.data.targets.map((target) => ({
           userId,
+          name: target.name,
           leadStageId: target.leadStageId,
           targetCount: target.targetCount,
         })),

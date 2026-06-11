@@ -5,7 +5,6 @@ import { NotificationDropdown } from "@/components/notifications/notification-dr
 import { NotificationPermissionBanner } from "@/components/notifications/notification-permission-banner";
 import { usePageTitle } from "@/components/page-title";
 import { ScrollToTopButton } from "@/components/scroll-to-top-button";
-import { TargetProgressBadge } from "@/components/targets/target-progress-badge";
 import { Badge } from "@/components/ui/badge";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 
@@ -24,7 +23,6 @@ export function AppHeader() {
               {leadCount} {leadCount === 1 ? "lead" : "leads"}
             </Badge>
           ) : null}
-          <TargetProgressBadge />
         </div>
         <div className="flex shrink-0 items-center gap-1">
           <NotificationDropdown />

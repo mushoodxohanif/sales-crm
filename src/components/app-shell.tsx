@@ -4,6 +4,7 @@ import { AppSidebar } from "@/components/app-sidebar";
 import { NotificationProvider } from "@/components/notifications/notification-provider";
 import { PageTitleProvider } from "@/components/page-title";
 import { DailyTargetProgressProvider } from "@/components/targets/daily-target-progress-provider";
+import { TargetFloatingPanel } from "@/components/targets/target-floating-panel";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import { TooltipProvider } from "@/components/ui/tooltip";
 
@@ -37,7 +38,10 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
         <PageTitleProvider>
           {session?.user?.id ? (
             <DailyTargetProgressProvider>
-              <NotificationProvider userId={session.user.id}>{shellContent}</NotificationProvider>
+              <NotificationProvider userId={session.user.id}>
+                {shellContent}
+                <TargetFloatingPanel />
+              </NotificationProvider>
             </DailyTargetProgressProvider>
           ) : (
             shellContent

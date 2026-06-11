@@ -2,6 +2,24 @@ import { CampaignStatus } from "@/generated/prisma/client";
 import { db } from "@/lib/db";
 import { getUtcDayBounds } from "@/lib/leads/stage-transitions";
 
+export type DailyTargetProgressItem = {
+  id: string;
+  name: string;
+  leadStageId: string;
+  stageName: string;
+  campaignName: string;
+  stageColor: string | null;
+  targetCount: number;
+  completed: number;
+};
+
+export type DailyTargetProgressSummary = {
+  completed: number;
+  target: number;
+  hasTargets: boolean;
+  targets: DailyTargetProgressItem[];
+};
+
 export async function getUserDailyTargets(userId: string) {
   return db.dailyTarget.findMany({
     where: { userId },
@@ -12,6 +30,7 @@ export async function getUserDailyTargets(userId: string) {
           id: true,
           name: true,
           slug: true,
+          color: true,
           campaign: {
             select: {
               id: true,
@@ -45,13 +64,28 @@ export async function getActiveCampaignsWithStages() {
   });
 }
 
-export async function getDailyTargetProgressForUser(userId: string) {
+export async function getDailyTargetProgressForUser(
+  userId: string,
+): Promise<DailyTargetProgressSummary> {
   const targets = await db.dailyTarget.findMany({
     where: { userId },
+    orderBy: [{ leadStage: { campaign: { name: "asc" } } }, { leadStage: { sortOrder: "asc" } }],
     select: {
       id: true,
+      name: true,
       leadStageId: true,
       targetCount: true,
+      leadStage: {
+        select: {
+          name: true,
+          color: true,
+          campaign: {
+            select: {
+              name: true,
+            },
+          },
+        },
+      },
     },
   });
 
@@ -60,6 +94,7 @@ export async function getDailyTargetProgressForUser(userId: string) {
       completed: 0,
       target: 0,
       hasTargets: false,
+      targets: [],
     };
   }
 
@@ -96,14 +131,28 @@ export async function getDailyTargetProgressForUser(userId: string) {
   let completed = 0;
   let target = 0;
 
-  for (const dailyTarget of targets) {
+  const targetItems: DailyTargetProgressItem[] = targets.map((dailyTarget) => {
+    const itemCompleted = completedByStage.get(dailyTarget.leadStageId) ?? 0;
+
+    completed += itemCompleted;
     target += dailyTarget.targetCount;
-    completed += completedByStage.get(dailyTarget.leadStageId) ?? 0;
-  }
+
+    return {
+      id: dailyTarget.id,
+      name: dailyTarget.name,
+      leadStageId: dailyTarget.leadStageId,
+      stageName: dailyTarget.leadStage.name,
+      campaignName: dailyTarget.leadStage.campaign.name,
+      stageColor: dailyTarget.leadStage.color,
+      targetCount: dailyTarget.targetCount,
+      completed: itemCompleted,
+    };
+  });
 
   return {
     completed,
     target,
     hasTargets: true,
+    targets: targetItems,
   };
 }

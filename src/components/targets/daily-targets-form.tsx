@@ -20,6 +20,7 @@ import { deleteDailyTarget, saveDailyTargets } from "@/lib/actions/daily-targets
 
 type TargetDraft = {
   id?: string;
+  name: string;
   leadStageId: string;
   targetCount: number;
 };
@@ -32,6 +33,7 @@ interface DailyTargetsFormProps {
 function toDrafts(targets: DailyTargetWithStage[]): TargetDraft[] {
   return targets.map((target) => ({
     id: target.id,
+    name: target.name,
     leadStageId: target.leadStageId,
     targetCount: target.targetCount,
   }));
@@ -39,7 +41,10 @@ function toDrafts(targets: DailyTargetWithStage[]): TargetDraft[] {
 
 function draftsSignature(drafts: TargetDraft[]) {
   return drafts
-    .map((target) => `${target.id ?? "new"}:${target.leadStageId}:${target.targetCount}`)
+    .map(
+      (target) =>
+        `${target.id ?? "new"}:${target.name}:${target.leadStageId}:${target.targetCount}`,
+    )
     .join("|");
 }
 
@@ -50,6 +55,7 @@ export function DailyTargetsForm({ initialTargets, campaigns }: DailyTargetsForm
   const [targets, setTargets] = useState<TargetDraft[]>(() => toDrafts(initialTargets));
   const [newCampaignId, setNewCampaignId] = useState<string>("");
   const [newStageId, setNewStageId] = useState<string>("");
+  const [newTargetName, setNewTargetName] = useState("");
   const [newTargetCount, setNewTargetCount] = useState("5");
 
   const initialDrafts = useMemo(() => toDrafts(initialTargets), [initialTargets]);
@@ -71,7 +77,9 @@ export function DailyTargetsForm({ initialTargets, campaigns }: DailyTargetsForm
     return targets.some((target, index) => {
       const initial = initialDrafts[index];
       return (
-        target.leadStageId !== initial.leadStageId || target.targetCount !== initial.targetCount
+        target.name !== initial.name ||
+        target.leadStageId !== initial.leadStageId ||
+        target.targetCount !== initial.targetCount
       );
     });
   }, [targets, initialDrafts]);
@@ -109,9 +117,15 @@ export function DailyTargetsForm({ initialTargets, campaigns }: DailyTargetsForm
 
   function handleAddTarget() {
     const targetCount = Number.parseInt(newTargetCount, 10);
+    const name = newTargetName.trim();
 
     if (!newStageId) {
       toast.error("Select a stage for the new target.");
+      return;
+    }
+
+    if (!name) {
+      toast.error("Enter a name for the target.");
       return;
     }
 
@@ -125,8 +139,9 @@ export function DailyTargetsForm({ initialTargets, campaigns }: DailyTargetsForm
       return;
     }
 
-    setTargets((current) => [...current, { leadStageId: newStageId, targetCount }]);
+    setTargets((current) => [...current, { name, leadStageId: newStageId, targetCount }]);
     setNewStageId("");
+    setNewTargetName("");
     setNewTargetCount("5");
   }
 
@@ -165,9 +180,29 @@ export function DailyTargetsForm({ initialTargets, campaigns }: DailyTargetsForm
     );
   }
 
+  function handleTargetNameChange(leadStageId: string, value: string) {
+    setTargets((current) =>
+      current.map((target) =>
+        target.leadStageId === leadStageId ? { ...target, name: value } : target,
+      ),
+    );
+  }
+
   function handleSave() {
+    const hasEmptyName = targets.some((target) => !target.name.trim());
+
+    if (hasEmptyName) {
+      toast.error("Every target needs a name.");
+      return;
+    }
+
     startTransition(async () => {
-      const result = await saveDailyTargets({ targets });
+      const result = await saveDailyTargets({
+        targets: targets.map((target) => ({
+          ...target,
+          name: target.name.trim(),
+        })),
+      });
 
       if (!result.success) {
         toast.error(result.error);
@@ -187,7 +222,7 @@ export function DailyTargetsForm({ initialTargets, campaigns }: DailyTargetsForm
           <h2 className="font-medium">No daily targets yet</h2>
           <p className="text-muted-foreground mx-auto mt-2 max-w-md text-sm">
             Set how many leads you want to move into each stage every day. Progress appears in the
-            header as you move leads on the kanban.
+            floating targets panel as you move leads on the kanban.
           </p>
         </div>
       ) : (
@@ -201,9 +236,23 @@ export function DailyTargetsForm({ initialTargets, campaigns }: DailyTargetsForm
                   key={target.leadStageId}
                   className="flex flex-wrap items-center justify-between gap-3 p-4"
                 >
-                  <div className="min-w-0 space-y-1">
-                    <p className="font-medium">{stageName}</p>
-                    <p className="text-muted-foreground text-sm">{campaignName}</p>
+                  <div className="min-w-0 flex-1 space-y-3">
+                    <div className="space-y-2">
+                      <Label htmlFor={`target-name-${target.leadStageId}`}>Name</Label>
+                      <Input
+                        id={`target-name-${target.leadStageId}`}
+                        value={target.name}
+                        onChange={(event) =>
+                          handleTargetNameChange(target.leadStageId, event.target.value)
+                        }
+                        disabled={isPending}
+                        placeholder="e.g. Morning outreach"
+                        maxLength={100}
+                      />
+                    </div>
+                    <p className="text-muted-foreground text-sm">
+                      {campaignName} · {stageName}
+                    </p>
                   </div>
 
                   <div className="flex items-center gap-2">
@@ -251,10 +300,23 @@ export function DailyTargetsForm({ initialTargets, campaigns }: DailyTargetsForm
         <div className="rounded-xl border bg-card p-4 shadow-xs">
           <h2 className="font-medium">Add target</h2>
           <p className="text-muted-foreground mt-1 text-sm">
-            Pick a campaign stage and how many leads you want to move there today.
+            Give your target a name, pick a campaign stage, and set how many leads you want to move
+            there today.
           </p>
 
-          <div className="mt-4 grid gap-4 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto_auto] sm:items-end">
+          <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)_auto_auto] lg:items-end">
+            <div className="space-y-2">
+              <Label htmlFor="target-name">Name</Label>
+              <Input
+                id="target-name"
+                value={newTargetName}
+                onChange={(event) => setNewTargetName(event.target.value)}
+                disabled={isPending}
+                placeholder="e.g. Close deals"
+                maxLength={100}
+              />
+            </div>
+
             <div className="space-y-2">
               <Label htmlFor="target-campaign">Campaign</Label>
               <Select
@@ -282,7 +344,14 @@ export function DailyTargetsForm({ initialTargets, campaigns }: DailyTargetsForm
               <Label htmlFor="target-stage">Stage</Label>
               <Select
                 value={newStageId}
-                onValueChange={setNewStageId}
+                onValueChange={(value) => {
+                  setNewStageId(value);
+                  const stage = availableStages.find((item) => item.id === value);
+
+                  if (stage && !newTargetName.trim()) {
+                    setNewTargetName(stage.name);
+                  }
+                }}
                 disabled={isPending || !newCampaignId || availableStages.length === 0}
               >
                 <SelectTrigger id="target-stage" className="w-full">

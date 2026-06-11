@@ -4,11 +4,19 @@ import { auth } from "@/auth";
 import { RecentActivity } from "@/components/dashboard/recent-activity";
 import { StatCards } from "@/components/dashboard/stat-cards";
 import { SetPageTitle } from "@/components/page-title";
+import { DashboardTargets } from "@/components/targets/target-progress-list";
 import { buttonVariants } from "@/components/ui/button";
+import { getDailyTargetProgressForUser } from "@/lib/data/daily-targets";
 import { getDashboardData } from "@/lib/data/dashboard";
 
 export default async function DashboardPage() {
-  const [session, dashboard] = await Promise.all([auth(), getDashboardData()]);
+  const session = await auth();
+  const userId = session?.user?.id;
+
+  const [dashboard, targetProgress] = await Promise.all([
+    getDashboardData(),
+    userId ? getDailyTargetProgressForUser(userId) : null,
+  ]);
   const firstName = session?.user?.name?.split(/\s+/)[0];
 
   return (
@@ -25,6 +33,8 @@ export default async function DashboardPage() {
       </div>
 
       <StatCards stats={dashboard.stats} />
+
+      {targetProgress ? <DashboardTargets progress={targetProgress} /> : null}
 
       <RecentActivity
         recentLeads={dashboard.recentLeads}

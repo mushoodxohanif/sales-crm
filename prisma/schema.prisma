@@ -249,6 +249,7 @@ model DailyTarget {
   id          String    @id @default(cuid())
   userId      String
   user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name        String
   leadStageId String
   leadStage   LeadStage @relation(fields: [leadStageId], references: [id], onDelete: Cascade)
   targetCount Int
