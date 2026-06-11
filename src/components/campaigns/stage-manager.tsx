@@ -31,6 +31,7 @@ export interface StageManagerStage {
 interface StageManagerProps {
   stages: StageManagerStage[];
   onStagesChange: (stages: StageManagerStage[]) => void;
+  onSetDefault?: (stageId: string) => void;
   onExistingStageDelete?: (stageId: string) => void;
   disabled?: boolean;
   isPending?: boolean;
@@ -56,6 +57,7 @@ function slugForStage(name: string, stages: StageManagerStage[], stageId: string
 export function StageManager({
   stages,
   onStagesChange,
+  onSetDefault,
   onExistingStageDelete,
   disabled = false,
   isPending = false,
@@ -83,6 +85,11 @@ export function StageManager({
   }
 
   function handleSetDefault(stageId: string) {
+    if (onSetDefault) {
+      onSetDefault(stageId);
+      return;
+    }
+
     onStagesChange(
       stages.map((stage) => ({
         ...stage,

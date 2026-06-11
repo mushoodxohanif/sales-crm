@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { archiveCampaign, restoreCampaign, saveCampaignSettings } from "@/lib/actions/campaigns";
+import { setDefaultStage } from "@/lib/actions/lead-stages";
 
 type CampaignStatusValue = "ACTIVE" | "ARCHIVED";
 
@@ -81,6 +82,37 @@ export function CampaignSettingsForm({
     setDeletedStageIds((current) => (current.includes(stageId) ? current : [...current, stageId]));
   }
 
+  function handleSetDefault(stageId: string) {
+    setStages((current) =>
+      current.map((stage) => ({
+        ...stage,
+        isDefault: stage.id === stageId,
+      })),
+    );
+
+    if (!isPersistedStageId(stageId, initialStageIds)) {
+      return;
+    }
+
+    startTransition(async () => {
+      const result = await setDefaultStage({ id: stageId });
+
+      if (!result.success) {
+        toast.error(result.error);
+        setStages((current) =>
+          current.map((stage) => ({
+            ...stage,
+            isDefault: initialStages.find((item) => item.id === stage.id)?.isDefault ?? false,
+          })),
+        );
+        return;
+      }
+
+      toast.success("Default stage updated");
+      router.refresh();
+    });
+  }
+
   function handleSave(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
@@ -134,6 +166,7 @@ export function CampaignSettingsForm({
       <StageManager
         stages={stages}
         onStagesChange={setStages}
+        onSetDefault={handleSetDefault}
         onExistingStageDelete={handleExistingStageDelete}
         disabled={isArchived}
         isPending={isPending}
