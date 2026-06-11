@@ -13,17 +13,7 @@ export function TargetFloatingPanel() {
   const [isOpen, setIsOpen] = useState(false);
 
   if (!progress?.hasTargets) {
-    return (
-      <div className="pointer-events-none fixed right-4 bottom-4 z-40">
-        <Link
-          href="/targets"
-          className="pointer-events-auto flex size-12 items-center justify-center rounded-full border bg-card shadow-lg transition-transform hover:scale-105"
-          aria-label="Set up daily targets"
-        >
-          <TargetIcon className="text-muted-foreground size-5" />
-        </Link>
-      </div>
-    );
+    return null;
   }
 
   const overallComplete = progress.completed >= progress.target;
