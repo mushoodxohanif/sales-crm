@@ -93,19 +93,58 @@ export async function getConversationForUser(conversationId: string, userId: str
   };
 }
 
+const messageInclude = {
+  sender: {
+    select: {
+      id: true,
+      name: true,
+      image: true,
+    },
+  },
+} as const;
+
 export async function getConversationMessages(conversationId: string, limit = 100) {
   return db.directMessage.findMany({
     where: { conversationId },
     orderBy: { createdAt: "asc" },
     take: limit,
-    include: {
-      sender: {
-        select: {
-          id: true,
-          name: true,
-          image: true,
-        },
-      },
-    },
+    include: messageInclude,
   });
+}
+
+export async function loadConversationThreadForUser(
+  conversationId: string,
+  userId: string,
+  limit = 100,
+) {
+  const conversation = await db.conversation.findFirst({
+    where: {
+      id: conversationId,
+      OR: [{ participant1Id: userId }, { participant2Id: userId }],
+    },
+    select: { id: true },
+  });
+
+  if (!conversation) {
+    return null;
+  }
+
+  const [messages] = await Promise.all([
+    db.directMessage.findMany({
+      where: { conversationId },
+      orderBy: { createdAt: "asc" },
+      take: limit,
+      include: messageInclude,
+    }),
+    db.directMessage.updateMany({
+      where: {
+        conversationId,
+        senderId: { not: userId },
+        readAt: null,
+      },
+      data: { readAt: new Date() },
+    }),
+  ]);
+
+  return messages;
 }

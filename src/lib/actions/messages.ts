@@ -1,12 +1,13 @@
 "use server";
 
+import { after } from "next/server";
 import { z } from "zod";
 import { auth } from "@/auth";
 import { type ActionResult, actionError, actionSuccess } from "@/lib/actions/types";
 import {
-  getConversationForUser,
-  getConversationMessages,
+  type getConversationMessages,
   listConversationsForUser,
+  loadConversationThreadForUser,
 } from "@/lib/data/conversations";
 import { listWorkspaceUsers } from "@/lib/data/users";
 import { db } from "@/lib/db";
@@ -134,13 +135,19 @@ export async function fetchConversationMessages(
     return actionError("Conversation id is required.");
   }
 
-  const conversation = await getConversationForUser(conversationId, userId);
+  const messages = await loadConversationThreadForUser(conversationId, userId);
 
-  if (!conversation) {
+  if (!messages) {
     return actionError("Conversation not found.");
   }
 
-  const messages = await getConversationMessages(conversationId);
+  after(() => {
+    void triggerPusherEvent(pusherChannels.conversation(conversationId), "message:read", {
+      conversationId,
+      readerId: userId,
+    });
+  });
+
   return actionSuccess(messages.map(serializeDirectMessage));
 }
 
@@ -271,27 +278,32 @@ export async function sendDirectMessage(input: unknown): Promise<
     return created;
   });
 
-  await deliverNotification({
-    recipientId,
-    type: "DIRECT_MESSAGE",
-    actorId: userId,
-    preview,
-    conversationId: parsed.data.conversationId,
-    messageId: message.id,
-  });
+  const pusherPayload = {
+    id: message.id,
+    conversationId: message.conversationId,
+    body: message.body,
+    senderId: message.senderId,
+    createdAt: message.createdAt.toISOString(),
+    sender: message.sender,
+  };
 
-  await triggerPusherEvent(
-    pusherChannels.conversation(parsed.data.conversationId),
-    "message:created",
-    {
-      id: message.id,
-      conversationId: message.conversationId,
-      body: message.body,
-      senderId: message.senderId,
-      createdAt: message.createdAt.toISOString(),
-      sender: message.sender,
-    },
-  );
+  after(async () => {
+    await Promise.all([
+      deliverNotification({
+        recipientId,
+        type: "DIRECT_MESSAGE",
+        actorId: userId,
+        preview,
+        conversationId: parsed.data.conversationId,
+        messageId: message.id,
+      }),
+      triggerPusherEvent(
+        pusherChannels.conversation(parsed.data.conversationId),
+        "message:created",
+        pusherPayload,
+      ),
+    ]);
+  });
 
   return actionSuccess({
     id: message.id,
@@ -339,11 +351,13 @@ export async function markConversationRead(input: unknown): Promise<ActionResult
     data: { readAt: new Date() },
   });
 
-  await triggerPusherEvent(
-    pusherChannels.conversation(parsed.data.conversationId),
-    "message:read",
-    { conversationId: parsed.data.conversationId, readerId: userId },
-  );
+  after(() => {
+    void triggerPusherEvent(
+      pusherChannels.conversation(parsed.data.conversationId),
+      "message:read",
+      { conversationId: parsed.data.conversationId, readerId: userId },
+    );
+  });
 
   return actionSuccess(undefined);
 }

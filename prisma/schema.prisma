@@ -201,6 +201,9 @@ model Conversation {
   updatedAt      DateTime        @updatedAt
 
   @@unique([participant1Id, participant2Id])
+  @@index([participant1Id])
+  @@index([participant2Id])
+  @@index([updatedAt])
 }
 
 model DirectMessage {
@@ -214,6 +217,7 @@ model DirectMessage {
   readAt         DateTime?
 
   @@index([conversationId, createdAt])
+  @@index([conversationId, senderId, readAt])
 }
 
 model Notification {

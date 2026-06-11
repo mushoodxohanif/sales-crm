@@ -1,7 +1,7 @@
 "use client";
 
 import { Loader2Icon, MessageSquarePlusIcon, SendIcon } from "lucide-react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useRef, useState, useTransition } from "react";
 import { toast } from "sonner";
 import { useNotifications } from "@/components/notifications/notification-provider";
@@ -43,9 +43,14 @@ type PusherMessagePayload = {
 
 interface MessagesViewProps {
   currentUserId: string;
+  currentUser: {
+    name: string | null;
+    image: string | null;
+  };
   initialConversations: ConversationSummaryPayload[];
   users: WorkspaceUserForMessage[];
   initialConversationId?: string;
+  initialMessages?: DirectMessagePayload[];
   targetUserId?: string;
 }
 
@@ -116,12 +121,13 @@ function upsertConversationSummary(
 
 export function MessagesView({
   currentUserId,
+  currentUser,
   initialConversations,
   users,
   initialConversationId,
+  initialMessages = [],
   targetUserId,
 }: MessagesViewProps) {
-  const router = useRouter();
   const searchParams = useSearchParams();
   const { setActiveConversationId } = useNotifications();
   const [isPending, startTransition] = useTransition();
@@ -129,7 +135,19 @@ export function MessagesView({
   const [selectedConversationId, setSelectedConversationId] = useState<string | null>(
     initialConversationId ?? null,
   );
-  const [messages, setMessages] = useState<DirectMessagePayload[]>([]);
+  const messageCacheRef = useRef<Map<string, DirectMessagePayload[]>>(
+    new Map(initialConversationId ? [[initialConversationId, initialMessages]] : undefined),
+  );
+  const serverHydratedConversationsRef = useRef(
+    initialConversationId ? new Set([initialConversationId]) : new Set<string>(),
+  );
+  const [messages, setMessages] = useState<DirectMessagePayload[]>(() => {
+    if (initialConversationId) {
+      return messageCacheRef.current.get(initialConversationId) ?? initialMessages;
+    }
+
+    return [];
+  });
   const [isLoadingMessages, setIsLoadingMessages] = useState(false);
   const [messageBody, setMessageBody] = useState("");
   const [newConversationOpen, setNewConversationOpen] = useState(false);
@@ -142,15 +160,27 @@ export function MessagesView({
     (conversation) => conversation.id === selectedConversationId,
   );
 
-  const appendMessage = useCallback((message: DirectMessagePayload) => {
-    setMessages((current) => {
-      if (current.some((item) => item.id === message.id)) {
-        return current;
-      }
+  const syncMessageCache = useCallback(
+    (conversationId: string, nextMessages: DirectMessagePayload[]) => {
+      messageCacheRef.current.set(conversationId, nextMessages);
+    },
+    [],
+  );
 
-      return [...current, message];
-    });
-  }, []);
+  const appendMessage = useCallback(
+    (message: DirectMessagePayload) => {
+      setMessages((current) => {
+        if (current.some((item) => item.id === message.id)) {
+          return current;
+        }
+
+        const nextMessages = [...current, message];
+        syncMessageCache(message.conversationId, nextMessages);
+        return nextMessages;
+      });
+    },
+    [syncMessageCache],
+  );
 
   const updateConversationFromMessage = useCallback(
     (message: DirectMessagePayload, options?: { incrementUnread?: boolean }) => {
@@ -233,41 +263,60 @@ export function MessagesView({
   );
 
   const selectConversation = useCallback(
-    (conversationId: string, options?: { replace?: boolean }) => {
+    (conversationId: string) => {
       setSelectedConversationId(conversationId);
 
       const params = new URLSearchParams(searchParams.toString());
       params.set("conversation", conversationId);
       params.delete("user");
 
-      const nextUrl = `/messages?${params.toString()}`;
-      if (options?.replace) {
-        router.replace(nextUrl);
-      } else {
-        router.push(nextUrl);
-      }
+      window.history.replaceState(null, "", `/messages?${params.toString()}`);
     },
-    [router, searchParams],
+    [searchParams],
   );
 
   const loadMessages = useCallback(
     async (conversationId: string) => {
-      setIsLoadingMessages(true);
+      if (serverHydratedConversationsRef.current.has(conversationId)) {
+        serverHydratedConversationsRef.current.delete(conversationId);
+        setMessages(messageCacheRef.current.get(conversationId) ?? []);
+        setConversations((current) =>
+          current.map((conversation) =>
+            conversation.id === conversationId ? { ...conversation, unreadCount: 0 } : conversation,
+          ),
+        );
+        setIsLoadingMessages(false);
+        return;
+      }
+
+      const cached = messageCacheRef.current.get(conversationId);
+
+      if (cached) {
+        setMessages(cached);
+      } else {
+        setIsLoadingMessages(true);
+      }
 
       const result = await fetchConversationMessages(conversationId);
 
       if (result.success) {
+        syncMessageCache(conversationId, result.data);
         setMessages(result.data);
-      } else {
+        setConversations((current) =>
+          current.map((conversation) =>
+            conversation.id === conversationId ? { ...conversation, unreadCount: 0 } : conversation,
+          ),
+        );
+      } else if (!cached) {
         toast.error(result.error);
         setMessages([]);
         setSelectedConversationId(null);
-        router.push("/messages");
+        window.history.replaceState(null, "", "/messages");
       }
 
       setIsLoadingMessages(false);
     },
-    [router],
+    [syncMessageCache],
   );
 
   useEffect(() => {
@@ -278,19 +327,7 @@ export function MessagesView({
     }
 
     setActiveConversationId(selectedConversationId);
-
     void loadMessages(selectedConversationId);
-    void markConversationRead({ conversationId: selectedConversationId }).then((result) => {
-      if (result.success) {
-        setConversations((current) =>
-          current.map((conversation) =>
-            conversation.id === selectedConversationId
-              ? { ...conversation, unreadCount: 0 }
-              : conversation,
-          ),
-        );
-      }
-    });
 
     return () => {
       setActiveConversationId(null);
@@ -321,7 +358,7 @@ export function MessagesView({
         setConversations(conversationsResult.data);
       }
 
-      selectConversation(result.data.id, { replace: true });
+      selectConversation(result.data.id);
       setIsCreatingConversation(false);
     }
 
@@ -367,6 +404,24 @@ export function MessagesView({
     }
 
     const body = messageBody.trim();
+    const optimisticId = `optimistic-${crypto.randomUUID()}`;
+    const optimisticMessage: DirectMessagePayload = {
+      id: optimisticId,
+      conversationId: selectedConversationId,
+      body,
+      senderId: currentUserId,
+      createdAt: new Date().toISOString(),
+      readAt: null,
+      sender: {
+        id: currentUserId,
+        name: currentUser.name,
+        image: currentUser.image,
+      },
+    };
+
+    appendMessage(optimisticMessage);
+    updateConversationFromMessage(optimisticMessage, { incrementUnread: false });
+    setMessageBody("");
 
     startTransition(async () => {
       const result = await sendDirectMessage({
@@ -376,26 +431,31 @@ export function MessagesView({
 
       if (!result.success) {
         toast.error(result.error);
+        setMessages((current) => {
+          const nextMessages = current.filter((message) => message.id !== optimisticId);
+          syncMessageCache(selectedConversationId, nextMessages);
+          return nextMessages;
+        });
         return;
       }
 
-      const message: DirectMessagePayload = {
+      const confirmedMessage: DirectMessagePayload = {
         id: result.data.id,
         conversationId: result.data.conversationId,
         body: result.data.body,
         senderId: result.data.senderId,
         createdAt: result.data.createdAt,
         readAt: null,
-        sender: {
-          id: currentUserId,
-          name: null,
-          image: null,
-        },
+        sender: optimisticMessage.sender,
       };
 
-      appendMessage(message);
-      updateConversationFromMessage(message, { incrementUnread: false });
-      setMessageBody("");
+      setMessages((current) => {
+        const nextMessages = current.map((message) =>
+          message.id === optimisticId ? confirmedMessage : message,
+        );
+        syncMessageCache(selectedConversationId, nextMessages);
+        return nextMessages;
+      });
     });
   }
 
@@ -538,7 +598,7 @@ export function MessagesView({
                 className="md:hidden"
                 onClick={() => {
                   setSelectedConversationId(null);
-                  router.push("/messages");
+                  window.history.replaceState(null, "", "/messages");
                 }}
               >
                 Back
