@@ -1,7 +1,7 @@
-import { createGoogleGenerativeAI } from "@ai-sdk/google";
 import { generateObject } from "ai";
 import { z } from "zod";
 import { FieldType } from "@/generated/prisma/client";
+import { getGeminiModel } from "@/lib/ai/gemini";
 import type { ParsedRow } from "@/lib/import/types";
 
 const fieldTypeSchema = z.nativeEnum(FieldType);
@@ -34,17 +34,6 @@ const matchAnalysisSchema = z.object({
     )
     .default([]),
 });
-
-function getGeminiModel() {
-  const apiKey = process.env.GEMINI_API_KEY;
-
-  if (!apiKey) {
-    throw new Error("GEMINI_API_KEY is not configured.");
-  }
-
-  const google = createGoogleGenerativeAI({ apiKey });
-  return google("gemini-2.0-flash");
-}
 
 export async function analyzeImportWithAI(input: { headers: string[]; previewRows: ParsedRow[] }) {
   const sampleTable = input.previewRows

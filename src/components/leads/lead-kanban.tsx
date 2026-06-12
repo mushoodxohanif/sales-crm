@@ -20,6 +20,7 @@ import { LeadCard, type LeadKanbanLead, type LeadKanbanStage } from "@/component
 import { LeadDetailDialog } from "@/components/leads/lead-detail-dialog";
 import { useSetLeadCount } from "@/components/page-title";
 import { useDailyTargetProgressOptional } from "@/components/targets/daily-target-progress-provider";
+import type { LeadIcpEvaluationClient } from "@/lib/actions/icp";
 import { moveLeadToStage } from "@/lib/actions/leads";
 import type { LeadFieldDefinition } from "@/lib/leads/field-values";
 import {
@@ -181,6 +182,20 @@ export function LeadKanban({
       })),
     );
     setSelectedLead(null);
+  }
+
+  function handleIcpEvaluated(leadId: string, evaluation: LeadIcpEvaluationClient) {
+    setStages((current) =>
+      current.map((stage) => ({
+        ...stage,
+        leads: stage.leads.map((lead) =>
+          lead.id === leadId ? { ...lead, icpEvaluation: evaluation } : lead,
+        ),
+      })),
+    );
+    setSelectedLead((current) =>
+      current?.id === leadId ? { ...current, icpEvaluation: evaluation } : current,
+    );
   }
 
   const stageOptions = stages.map((stage) => ({
@@ -347,6 +362,7 @@ export function LeadKanban({
             disabled={disabled}
             focusCommentsOnOpen={focusCommentsOnOpen}
             onLeadDeleted={handleLeadDeleted}
+            onIcpEvaluated={handleIcpEvaluated}
           />
         </>
       )}

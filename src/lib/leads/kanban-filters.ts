@@ -19,16 +19,22 @@ export type CheckboxFilterValue = "all" | "yes" | "no";
 
 export type FieldFilterValue = string | CheckboxFilterValue;
 
+export type IcpDecisionFilterValue = "all" | "TARGET" | "MAYBE" | "REJECT" | "unevaluated";
+
 export type KanbanFilterState = {
   search: string;
   sort: KanbanSortOption;
   fieldFilters: Record<string, FieldFilterValue>;
+  icpDecision: IcpDecisionFilterValue;
+  icpMinScore: string;
 };
 
 export const DEFAULT_KANBAN_FILTER_STATE: KanbanFilterState = {
   search: "",
   sort: "updatedAt_desc",
   fieldFilters: {},
+  icpDecision: "all",
+  icpMinScore: "",
 };
 
 const SEMANTIC_FIELD_CONFIG: Record<
@@ -469,6 +475,51 @@ export function sortKanbanLeads(
   });
 }
 
+function parseIcpMinScore(filter: string): number | null {
+  const trimmed = filter.trim();
+
+  if (!trimmed) {
+    return null;
+  }
+
+  const parsed = Number(trimmed);
+
+  if (!Number.isFinite(parsed)) {
+    return null;
+  }
+
+  return parsed;
+}
+
+export function matchesIcpDecisionFilter(
+  lead: LeadKanbanLead,
+  filter: IcpDecisionFilterValue,
+): boolean {
+  if (filter === "all") {
+    return true;
+  }
+
+  if (filter === "unevaluated") {
+    return !lead.icpEvaluation;
+  }
+
+  return lead.icpEvaluation?.decision === filter;
+}
+
+export function matchesIcpMinScoreFilter(lead: LeadKanbanLead, filter: string): boolean {
+  const minScore = parseIcpMinScore(filter);
+
+  if (minScore === null) {
+    return true;
+  }
+
+  if (!lead.icpEvaluation) {
+    return false;
+  }
+
+  return lead.icpEvaluation.score >= minScore;
+}
+
 export function applyKanbanFilters(
   stages: LeadKanbanStage[],
   fields: LeadFieldDefinition[],
@@ -480,7 +531,9 @@ export function applyKanbanFilters(
       stage.leads.filter(
         (lead) =>
           matchesKanbanSearch(lead, fields, state.search) &&
-          matchesAllFieldFilters(lead, fields, state.fieldFilters),
+          matchesAllFieldFilters(lead, fields, state.fieldFilters) &&
+          matchesIcpDecisionFilter(lead, state.icpDecision) &&
+          matchesIcpMinScoreFilter(lead, state.icpMinScore),
       ),
       fields,
       state.sort,
@@ -494,6 +547,14 @@ export function getFilteredLeadCount(stages: LeadKanbanStage[]): number {
 
 export function countActiveKanbanFilters(state: KanbanFilterState): number {
   let count = state.search.trim().length > 0 ? 1 : 0;
+
+  if (state.icpDecision !== "all") {
+    count += 1;
+  }
+
+  if (state.icpMinScore.trim().length > 0) {
+    count += 1;
+  }
 
   for (const value of Object.values(state.fieldFilters)) {
     if (!isEmptyFilterValue(value)) {

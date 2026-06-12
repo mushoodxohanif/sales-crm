@@ -27,6 +27,15 @@ const STATIC_TITLES: Record<string, { title: string }> = {
   "/targets": {
     title: "Daily targets",
   },
+  "/tasks": {
+    title: "Tasks",
+  },
+  "/tools/linkedin-comment": {
+    title: "LinkedIn comment",
+  },
+  "/settings/icp": {
+    title: "ICP settings",
+  },
 };
 
 const DYNAMIC_PATTERNS: Array<{

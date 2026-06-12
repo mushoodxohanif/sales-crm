@@ -2,11 +2,13 @@
 
 import { ClockIcon } from "lucide-react";
 import { DeleteLeadButton } from "@/components/leads/delete-lead-button";
+import { IcpEvaluationPanel } from "@/components/leads/icp-evaluation-panel";
 import { LeadActivityPanel } from "@/components/leads/lead-activity-panel";
 import type { LeadKanbanLead } from "@/components/leads/lead-card";
 import { LeadForm } from "@/components/leads/lead-form";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
+import type { LeadIcpEvaluationClient } from "@/lib/actions/icp";
 import {
   fieldValuesToMap,
   getLeadDisplayTitle,
@@ -32,6 +34,7 @@ interface LeadDetailDialogProps {
   disabled?: boolean;
   focusCommentsOnOpen?: boolean;
   onLeadDeleted?: (leadId: string) => void;
+  onIcpEvaluated?: (leadId: string, evaluation: LeadIcpEvaluationClient) => void;
 }
 
 export function LeadDetailDialog({
@@ -45,6 +48,7 @@ export function LeadDetailDialog({
   disabled = false,
   focusCommentsOnOpen = false,
   onLeadDeleted,
+  onIcpEvaluated,
 }: LeadDetailDialogProps) {
   if (!lead) {
     return null;
@@ -85,6 +89,15 @@ export function LeadDetailDialog({
                   ) : null}
                 </div>
               </div>
+            </div>
+
+            <div className="shrink-0 px-6">
+              <IcpEvaluationPanel
+                leadId={lead.id}
+                initialEvaluation={lead.icpEvaluation}
+                disabled={disabled}
+                onEvaluated={(evaluation) => onIcpEvaluated?.(lead.id, evaluation)}
+              />
             </div>
 
             <div className="flex min-h-0 flex-1 flex-col px-6">

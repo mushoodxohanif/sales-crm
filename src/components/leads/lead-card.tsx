@@ -1,7 +1,9 @@
 "use client";
 
 import { EllipsisVerticalIcon } from "lucide-react";
+import { IcpDecisionBadge } from "@/components/leads/icp-evaluation-panel";
 import { Button } from "@/components/ui/button";
+import type { LeadIcpEvaluationClient } from "@/lib/actions/icp";
 import {
   formatFieldValueForDisplay,
   getKanbanCardFields,
@@ -17,6 +19,7 @@ export interface LeadKanbanLead {
   createdAt: string;
   updatedAt: string;
   commentCount?: number;
+  icpEvaluation?: LeadIcpEvaluationClient | null;
 }
 
 export interface LeadKanbanStage {
@@ -47,9 +50,12 @@ export function LeadCard({ fields, lead, disabled = false, onOpen }: LeadCardPro
   return (
     <>
       <div className="relative min-w-0 flex-1 pr-5">
-        <span className="text-muted-foreground absolute top-0 right-0 text-[10px] tabular-nums">
-          {daysInPipeline}d<span className="sr-only"> days in pipeline</span>
-        </span>
+        <div className="absolute top-0 right-0 flex flex-col items-end gap-0.5">
+          <span className="text-muted-foreground text-[10px] tabular-nums">
+            {daysInPipeline}d<span className="sr-only"> days in pipeline</span>
+          </span>
+          {lead.icpEvaluation ? <IcpDecisionBadge evaluation={lead.icpEvaluation} /> : null}
+        </div>
         {kanbanFields.length > 0 ? (
           kanbanFields.map((field, index) => {
             const value = valueByFieldId.get(field.id);

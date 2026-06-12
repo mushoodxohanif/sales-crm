@@ -1,6 +1,7 @@
 "use client";
 
-import { ChevronsUpDownIcon, LogOutIcon } from "lucide-react";
+import { ChevronsUpDownIcon, LogOutIcon, TargetIcon } from "lucide-react";
+import Link from "next/link";
 import { NotificationSettings } from "@/components/notifications/notification-settings";
 import { UserRoleBadge } from "@/components/team/user-role-badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -70,6 +71,12 @@ export function UserMenu({ name, email, image, role, variant = "header" }: UserM
       </DropdownMenuLabel>
       <DropdownMenuSeparator />
       <NotificationSettings />
+      <DropdownMenuItem asChild>
+        <Link href="/settings/icp" className="flex items-center gap-1.5">
+          <TargetIcon className="size-4" />
+          ICP settings
+        </Link>
+      </DropdownMenuItem>
       <DropdownMenuSeparator />
       <DropdownMenuItem variant="destructive" asChild>
         <form action={signOutAction} className="w-full">

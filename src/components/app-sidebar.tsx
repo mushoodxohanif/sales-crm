@@ -1,11 +1,14 @@
 "use client";
 
 import {
+  CheckSquareIcon,
   FileSpreadsheetIcon,
   LayoutDashboardIcon,
   MegaphoneIcon,
   MessageSquareIcon,
+  MessageSquareReplyIcon,
   ShapesIcon,
+  TargetIcon,
   UsersIcon,
 } from "lucide-react";
 import Link from "next/link";
@@ -30,8 +33,16 @@ const navItems = [
   { href: "/campaign-types", label: "Campaign types", icon: ShapesIcon, match: "prefix" as const },
   { href: "/campaigns", label: "Campaigns", icon: MegaphoneIcon, match: "prefix" as const },
   { href: "/import", label: "Import", icon: FileSpreadsheetIcon, match: "prefix" as const },
+  { href: "/tasks", label: "Tasks", icon: CheckSquareIcon, match: "exact" as const },
+  {
+    href: "/tools/linkedin-comment",
+    label: "LinkedIn comment",
+    icon: MessageSquareReplyIcon,
+    match: "exact" as const,
+  },
   { href: "/messages", label: "Messages", icon: MessageSquareIcon, match: "exact" as const },
   { href: "/team", label: "Team", icon: UsersIcon, match: "exact" as const },
+  { href: "/settings/icp", label: "ICP settings", icon: TargetIcon, match: "prefix" as const },
 ];
 
 function isActive(pathname: string, href: string, match: "exact" | "prefix"): boolean {

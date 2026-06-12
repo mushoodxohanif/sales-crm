@@ -1,6 +1,7 @@
 import { CampaignStatus, FieldType } from "../src/generated/prisma/client";
 import { DEFAULT_STAGES } from "../src/lib/campaigns/default-stages";
 import { db } from "../src/lib/db";
+import { DEFAULT_ICP_PROFILE } from "../src/lib/icp/defaults";
 
 const SEED_USER = {
   googleId: "seed-user-google-id",
@@ -156,6 +157,20 @@ async function main() {
     where: { email: SEED_USER.email },
     update: {},
     create: SEED_USER,
+  });
+
+  await db.workspaceIcpProfile.upsert({
+    where: { id: DEFAULT_ICP_PROFILE.id },
+    update: {
+      productDescription: DEFAULT_ICP_PROFILE.productDescription,
+      targetIndustries: DEFAULT_ICP_PROFILE.targetIndustries,
+      idealEmployeeMin: DEFAULT_ICP_PROFILE.idealEmployeeMin,
+      idealEmployeeMax: DEFAULT_ICP_PROFILE.idealEmployeeMax,
+      scoringGuidelines: DEFAULT_ICP_PROFILE.scoringGuidelines,
+      exclusionGuidelines: DEFAULT_ICP_PROFILE.exclusionGuidelines,
+      scoreThresholds: DEFAULT_ICP_PROFILE.scoreThresholds,
+    },
+    create: DEFAULT_ICP_PROFILE,
   });
 
   for (const typeSeed of CAMPAIGN_TYPES) {

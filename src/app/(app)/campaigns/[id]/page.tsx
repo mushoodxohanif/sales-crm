@@ -8,6 +8,7 @@ import { buttonVariants } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { CampaignStatus } from "@/generated/prisma/client";
 import { getCampaignWithStagesAndLeads } from "@/lib/data/leads";
+import { toLeadIcpEvaluationClientFromRecord } from "@/lib/icp/serialization";
 import { toFieldDefinitions } from "@/lib/leads/field-values";
 import { cn } from "@/lib/utils";
 
@@ -59,6 +60,9 @@ export default async function CampaignDetailPage({
       createdAt: lead.createdAt.toISOString(),
       updatedAt: lead.updatedAt.toISOString(),
       commentCount: lead._count.comments,
+      icpEvaluation: lead.icpEvaluations[0]
+        ? toLeadIcpEvaluationClientFromRecord(lead.icpEvaluations[0])
+        : null,
     })),
   }));
 

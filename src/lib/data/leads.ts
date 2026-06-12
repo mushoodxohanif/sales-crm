@@ -17,6 +17,10 @@ export async function getCampaignWithStagesAndLeads(campaignId: string) {
           leads: {
             include: {
               fieldValues: true,
+              icpEvaluations: {
+                orderBy: { createdAt: "desc" },
+                take: 1,
+              },
               _count: {
                 select: { comments: true },
               },
@@ -69,6 +73,10 @@ export async function getLeadWithDetails(campaignId: string, leadId: string) {
         },
       },
       fieldValues: true,
+      icpEvaluations: {
+        orderBy: { createdAt: "desc" },
+        take: 1,
+      },
       campaign: {
         select: {
           id: true,

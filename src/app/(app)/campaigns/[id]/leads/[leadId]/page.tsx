@@ -1,11 +1,13 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { DeleteLeadButton } from "@/components/leads/delete-lead-button";
+import { IcpEvaluationPanel } from "@/components/leads/icp-evaluation-panel";
 import { LeadForm } from "@/components/leads/lead-form";
 import { SetPageTitle } from "@/components/page-title";
 import { buttonVariants } from "@/components/ui/button";
 import { CampaignStatus } from "@/generated/prisma/client";
 import { getLeadWithDetails } from "@/lib/data/leads";
+import { toLeadIcpEvaluationClientFromRecord } from "@/lib/icp/serialization";
 import {
   fieldValuesToMap,
   getLeadDisplayTitle,
@@ -29,6 +31,9 @@ export default async function EditLeadPage({ params }: EditLeadPageProps) {
   const initialValues = fieldValuesToMap(lead.fieldValues);
   const isArchived = lead.campaign.status === CampaignStatus.ARCHIVED;
   const title = getLeadDisplayTitle(fields, lead.fieldValues);
+  const latestIcpEvaluation = lead.icpEvaluations[0]
+    ? toLeadIcpEvaluationClientFromRecord(lead.icpEvaluations[0])
+    : null;
 
   return (
     <main className="flex min-h-0 w-full min-w-0 flex-1 flex-col gap-4 overflow-auto p-4">
@@ -47,6 +52,12 @@ export default async function EditLeadPage({ params }: EditLeadPageProps) {
           disabled={isArchived}
         />
       </div>
+
+      <IcpEvaluationPanel
+        leadId={lead.id}
+        initialEvaluation={latestIcpEvaluation}
+        disabled={isArchived}
+      />
 
       <LeadForm
         campaignId={campaignId}

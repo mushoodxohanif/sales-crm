@@ -36,6 +36,8 @@ model User {
   notificationPreferences     UserNotificationPreferences?
   dailyTargets                DailyTarget[]
   leadStageTransitions        LeadStageTransition[]
+  icpEvaluations              LeadIcpEvaluation[]
+  tasks                       Task[]
   createdAt                   DateTime                     @default(now())
   updatedAt                   DateTime                     @updatedAt
 }
@@ -63,6 +65,29 @@ enum ImportStatus {
   ANALYZED
   COMMITTED
   FAILED
+}
+
+enum IcpVerdict {
+  STRONG
+  MIXED
+  NOT_ICP
+}
+
+enum IcpDecision {
+  TARGET
+  MAYBE
+  REJECT
+}
+
+enum TaskStatus {
+  TODO
+  IN_PROGRESS
+  DONE
+}
+
+enum TaskSource {
+  MANUAL
+  AI_GENERATED
 }
 
 model CampaignType {
@@ -101,6 +126,7 @@ model Campaign {
   stages         LeadStage[]
   leads          Lead[]
   imports        LeadImport[]
+  tasks          Task[]
   status         CampaignStatus @default(ACTIVE)
   createdAt      DateTime       @default(now())
   updatedAt      DateTime       @updatedAt
@@ -134,6 +160,8 @@ model Lead {
   sourceImportId   String?
   sourceImport     LeadImport?           @relation(fields: [sourceImportId], references: [id], onDelete: SetNull)
   stageTransitions LeadStageTransition[]
+  icpEvaluations   LeadIcpEvaluation[]
+  tasks            Task[]
   createdAt        DateTime              @default(now())
   updatedAt        DateTime              @updatedAt
 }
@@ -272,4 +300,54 @@ model LeadStageTransition {
   createdAt   DateTime   @default(now())
 
   @@index([userId, toStageId, createdAt])
+}
+
+model WorkspaceIcpProfile {
+  id                  String   @id @default("default")
+  productDescription  String   @db.Text
+  targetIndustries    Json
+  idealEmployeeMin    Int      @default(5)
+  idealEmployeeMax    Int      @default(60)
+  scoringGuidelines   String   @db.Text
+  exclusionGuidelines String   @db.Text
+  scoreThresholds     Json
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+}
+
+model LeadIcpEvaluation {
+  id                 String      @id @default(cuid())
+  leadId             String
+  lead               Lead        @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  userId             String
+  user               User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  score              Float
+  verdict            IcpVerdict
+  decision           IcpDecision
+  industry           String
+  reasoning          String[]
+  painPoints         String[]
+  automationUseCases String[]
+  inputContext       Json
+  createdAt          DateTime    @default(now())
+
+  @@index([leadId, createdAt(sort: Desc)])
+}
+
+model Task {
+  id          String     @id @default(cuid())
+  userId      String
+  user        User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title       String
+  description String     @db.Text
+  status      TaskStatus @default(TODO)
+  leadId      String?
+  lead        Lead?      @relation(fields: [leadId], references: [id], onDelete: SetNull)
+  campaignId  String?
+  campaign    Campaign?  @relation(fields: [campaignId], references: [id], onDelete: SetNull)
+  source      TaskSource @default(MANUAL)
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  @@index([userId, status])
 }

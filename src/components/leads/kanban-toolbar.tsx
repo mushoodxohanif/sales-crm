@@ -21,11 +21,13 @@ import {
   DEFAULT_KANBAN_FILTER_STATE,
   type FieldFilterValue,
   getKanbanSortOptions,
+  type IcpDecisionFilterValue,
   type KanbanFilterState,
   type KanbanSortOption,
 } from "@/lib/leads/kanban-filters";
 
 const ANY_SELECT_VALUE = "__any__";
+const ANY_ICP_DECISION_VALUE = "__any_icp__";
 
 interface KanbanToolbarProps {
   fields: LeadFieldDefinition[];
@@ -189,6 +191,49 @@ export function KanbanToolbar({ fields, state, onChange }: KanbanToolbarProps) {
             ) : null}
           </div>
           <div className="max-h-80 space-y-3 overflow-y-auto p-3">
+            <div className="space-y-1.5">
+              <Label htmlFor="kanban-filter-icp-decision" className="text-xs">
+                ICP decision
+              </Label>
+              <Select
+                value={state.icpDecision === "all" ? ANY_ICP_DECISION_VALUE : state.icpDecision}
+                onValueChange={(value) =>
+                  onChange({
+                    ...state,
+                    icpDecision:
+                      value === ANY_ICP_DECISION_VALUE ? "all" : (value as IcpDecisionFilterValue),
+                  })
+                }
+              >
+                <SelectTrigger id="kanban-filter-icp-decision" className="w-full">
+                  <SelectValue placeholder="Any" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={ANY_ICP_DECISION_VALUE}>Any</SelectItem>
+                  <SelectItem value="TARGET">Target</SelectItem>
+                  <SelectItem value="MAYBE">Maybe</SelectItem>
+                  <SelectItem value="REJECT">Reject</SelectItem>
+                  <SelectItem value="unevaluated">Not evaluated</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="kanban-filter-icp-min-score" className="text-xs">
+                Minimum ICP score
+              </Label>
+              <Input
+                id="kanban-filter-icp-min-score"
+                type="number"
+                min={0}
+                max={10}
+                step={0.1}
+                value={state.icpMinScore}
+                onChange={(event) => onChange({ ...state, icpMinScore: event.target.value })}
+                placeholder="Any score"
+              />
+            </div>
+
             {sortedFields.length === 0 ? (
               <p className="text-muted-foreground text-sm">No custom fields to filter by.</p>
             ) : (
