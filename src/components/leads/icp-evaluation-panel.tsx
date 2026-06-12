@@ -9,7 +9,8 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { evaluateLeadIcp, type LeadIcpEvaluationClient } from "@/lib/actions/icp";
+import { evaluateLeadIcp } from "@/lib/actions/icp";
+import type { LeadIcpEvaluationClient } from "@/lib/icp/serialization";
 import { cn } from "@/lib/utils";
 import { formatRelativeTime } from "@/lib/utils/format-relative-time";
 

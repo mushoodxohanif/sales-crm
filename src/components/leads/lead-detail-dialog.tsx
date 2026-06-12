@@ -8,7 +8,7 @@ import type { LeadKanbanLead } from "@/components/leads/lead-card";
 import { LeadForm } from "@/components/leads/lead-form";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
-import type { LeadIcpEvaluationClient } from "@/lib/actions/icp";
+import type { LeadIcpEvaluationClient } from "@/lib/icp/serialization";
 import {
   fieldValuesToMap,
   getLeadDisplayTitle,

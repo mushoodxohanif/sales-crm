@@ -20,8 +20,8 @@ import { LeadCard, type LeadKanbanLead, type LeadKanbanStage } from "@/component
 import { LeadDetailDialog } from "@/components/leads/lead-detail-dialog";
 import { useSetLeadCount } from "@/components/page-title";
 import { useDailyTargetProgressOptional } from "@/components/targets/daily-target-progress-provider";
-import type { LeadIcpEvaluationClient } from "@/lib/actions/icp";
 import { moveLeadToStage } from "@/lib/actions/leads";
+import type { LeadIcpEvaluationClient } from "@/lib/icp/serialization";
 import type { LeadFieldDefinition } from "@/lib/leads/field-values";
 import {
   applyKanbanFilters,

@@ -62,7 +62,6 @@ function buildLeadContextForIcp(
 }
 
 export type IcpProfile = WorkspaceIcpProfileData;
-export type { LeadIcpEvaluationClient };
 
 export async function getIcpProfile(): Promise<ActionResult<IcpProfile>> {
   const userId = await requireUserId();

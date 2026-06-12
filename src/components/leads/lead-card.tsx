@@ -3,7 +3,7 @@
 import { EllipsisVerticalIcon } from "lucide-react";
 import { IcpDecisionBadge } from "@/components/leads/icp-evaluation-panel";
 import { Button } from "@/components/ui/button";
-import type { LeadIcpEvaluationClient } from "@/lib/actions/icp";
+import type { LeadIcpEvaluationClient } from "@/lib/icp/serialization";
 import {
   formatFieldValueForDisplay,
   getKanbanCardFields,
