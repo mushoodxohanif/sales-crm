@@ -48,7 +48,13 @@ export type UpdateIcpProfileInput = z.infer<typeof updateIcpProfileSchema>;
 
 export const evaluateLeadIcpSchema = z.object({
   leadId: z.string().min(1, "Lead id is required"),
-  additionalContext: z.string().max(10000, "Additional context is too long").optional(),
+  instructions: z.string().max(10000, "Instructions are too long").optional(),
 });
 
 export type EvaluateLeadIcpInput = z.infer<typeof evaluateLeadIcpSchema>;
+
+export const clearLeadIcpEvaluationSchema = z.object({
+  leadId: z.string().min(1, "Lead id is required"),
+});
+
+export type ClearLeadIcpEvaluationInput = z.infer<typeof clearLeadIcpEvaluationSchema>;

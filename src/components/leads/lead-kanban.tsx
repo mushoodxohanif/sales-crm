@@ -198,6 +198,20 @@ export function LeadKanban({
     );
   }
 
+  function handleIcpCleared(leadId: string) {
+    setStages((current) =>
+      current.map((stage) => ({
+        ...stage,
+        leads: stage.leads.map((lead) =>
+          lead.id === leadId ? { ...lead, icpEvaluation: null } : lead,
+        ),
+      })),
+    );
+    setSelectedLead((current) =>
+      current?.id === leadId ? { ...current, icpEvaluation: null } : current,
+    );
+  }
+
   const stageOptions = stages.map((stage) => ({
     id: stage.id,
     name: stage.name,
@@ -363,6 +377,7 @@ export function LeadKanban({
             focusCommentsOnOpen={focusCommentsOnOpen}
             onLeadDeleted={handleLeadDeleted}
             onIcpEvaluated={handleIcpEvaluated}
+            onIcpCleared={handleIcpCleared}
           />
         </>
       )}

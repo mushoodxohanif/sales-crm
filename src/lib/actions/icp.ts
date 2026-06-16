@@ -21,7 +21,11 @@ import {
   formatFieldValueForDisplay,
   toFieldDefinitions,
 } from "@/lib/leads/field-values";
-import { evaluateLeadIcpSchema, updateIcpProfileSchema } from "@/lib/validators/icp";
+import {
+  clearLeadIcpEvaluationSchema,
+  evaluateLeadIcpSchema,
+  updateIcpProfileSchema,
+} from "@/lib/validators/icp";
 
 async function requireUserId(): Promise<string | null> {
   const session = await auth();
@@ -137,18 +141,18 @@ export async function evaluateLeadIcp(
   const fields = toFieldDefinitions(lead.campaign.campaignType.fields);
   const leadContext = buildLeadContextForIcp(fields, lead.fieldValues);
   const profile = await getWorkspaceIcpProfile();
-  const additionalContext = parsed.data.additionalContext?.trim();
+  const instructions = parsed.data.instructions?.trim();
 
   try {
     const result = await runIcpEvaluation({
       profile,
       leadContext,
-      additionalContext,
+      instructions,
     });
 
     const inputContext = {
       leadContext,
-      additionalContext: additionalContext ?? null,
+      instructions: instructions ?? null,
       profileId: profile.id,
     };
 
@@ -174,6 +178,47 @@ export async function evaluateLeadIcp(
     const message = error instanceof Error ? error.message : "Failed to evaluate ICP.";
     return actionError(message);
   }
+}
+
+export async function clearLeadIcpEvaluation(input: unknown): Promise<ActionResult<null>> {
+  const userId = await requireUserId();
+  if (!userId) {
+    return actionError("You must be signed in to perform this action.");
+  }
+
+  const parsed = clearLeadIcpEvaluationSchema.safeParse(input);
+  if (!parsed.success) {
+    return actionError(formatZodError(parsed.error));
+  }
+
+  const lead = await db.lead.findUnique({
+    where: { id: parsed.data.leadId },
+    select: {
+      id: true,
+      campaign: {
+        select: {
+          id: true,
+          status: true,
+        },
+      },
+    },
+  });
+
+  if (!lead) {
+    return actionError("Lead not found.");
+  }
+
+  if (lead.campaign.status === "ARCHIVED") {
+    return actionError("Cannot clear ICP evaluation for leads in an archived campaign.");
+  }
+
+  await db.leadIcpEvaluation.deleteMany({
+    where: { leadId: lead.id },
+  });
+
+  revalidateLeadIcpPaths(lead.campaign.id, lead.id);
+
+  return actionSuccess(null);
 }
 
 export async function updateIcpProfile(input: unknown): Promise<ActionResult<IcpProfile>> {

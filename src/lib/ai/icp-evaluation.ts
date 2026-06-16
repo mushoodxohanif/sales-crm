@@ -31,7 +31,7 @@ export type IcpProfileForEvaluation = {
 export type EvaluateLeadIcpInput = {
   profile: IcpProfileForEvaluation;
   leadContext: Record<string, string>;
-  additionalContext?: string;
+  instructions?: string;
 };
 
 function formatTargetIndustries(targetIndustries: unknown): string {
@@ -68,10 +68,10 @@ function formatLeadContext(leadContext: Record<string, string>): string {
 }
 
 function buildIcpEvaluationPrompt(input: EvaluateLeadIcpInput): string {
-  const { profile, leadContext, additionalContext } = input;
-  const companyBlock = [formatLeadContext(leadContext), additionalContext?.trim()]
-    .filter(Boolean)
-    .join("\n\n");
+  const { profile, leadContext, instructions } = input;
+  const instructionsBlock = instructions?.trim()
+    ? `\nUser-provided evaluation instructions:\n${instructions.trim()}\n`
+    : "";
 
   return `Act as an ICP validation engine for ${profile.productDescription}
 
@@ -95,9 +95,9 @@ Output requirements:
 - automationUseCases: matching AI solutions (empty array if NOT_ICP)
 
 Be strict, not optimistic. Do not treat industry keywords alone as ICP proof.
-
+${instructionsBlock}
 Company to evaluate:
-${companyBlock}`;
+${formatLeadContext(leadContext)}`;
 }
 
 export async function evaluateLeadIcp(input: EvaluateLeadIcpInput): Promise<IcpEvaluationOutput> {

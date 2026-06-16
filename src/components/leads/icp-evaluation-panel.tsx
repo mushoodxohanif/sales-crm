@@ -1,6 +1,6 @@
 "use client";
 
-import { Loader2Icon, SparklesIcon } from "lucide-react";
+import { Loader2Icon, SparklesIcon, Undo2Icon } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState, useTransition } from "react";
@@ -9,7 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { evaluateLeadIcp } from "@/lib/actions/icp";
+import { clearLeadIcpEvaluation, evaluateLeadIcp } from "@/lib/actions/icp";
 import type { LeadIcpEvaluationClient } from "@/lib/icp/serialization";
 import { cn } from "@/lib/utils";
 import { formatRelativeTime } from "@/lib/utils/format-relative-time";
@@ -19,6 +19,7 @@ interface IcpEvaluationPanelProps {
   initialEvaluation?: LeadIcpEvaluationClient | null;
   disabled?: boolean;
   onEvaluated?: (evaluation: LeadIcpEvaluationClient) => void;
+  onCleared?: () => void;
 }
 
 function formatScore(score: number) {
@@ -127,10 +128,12 @@ export function IcpEvaluationPanel({
   initialEvaluation = null,
   disabled = false,
   onEvaluated,
+  onCleared,
 }: IcpEvaluationPanelProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
-  const [additionalContext, setAdditionalContext] = useState("");
+  const [isClearing, startClearTransition] = useTransition();
+  const [instructions, setInstructions] = useState("");
   const [evaluation, setEvaluation] = useState<LeadIcpEvaluationClient | null>(initialEvaluation);
 
   useEffect(() => {
@@ -141,7 +144,7 @@ export function IcpEvaluationPanel({
     startTransition(async () => {
       const result = await evaluateLeadIcp({
         leadId,
-        additionalContext: additionalContext.trim() || undefined,
+        instructions: instructions.trim() || undefined,
       });
 
       if (!result.success) {
@@ -155,6 +158,24 @@ export function IcpEvaluationPanel({
       router.refresh();
     });
   }
+
+  function handleClear() {
+    startClearTransition(async () => {
+      const result = await clearLeadIcpEvaluation({ leadId });
+
+      if (!result.success) {
+        toast.error(result.error);
+        return;
+      }
+
+      setEvaluation(null);
+      onCleared?.();
+      toast.success("ICP evaluation cleared");
+      router.refresh();
+    });
+  }
+
+  const isBusy = isPending || isClearing;
 
   return (
     <div className="space-y-3 border-b pb-4">
@@ -172,34 +193,53 @@ export function IcpEvaluationPanel({
             .
           </p>
         </div>
-        <Button
-          type="button"
-          size="sm"
-          variant={evaluation ? "outline" : "default"}
-          disabled={disabled || isPending}
-          onClick={handleEvaluate}
-          className="shrink-0 gap-1.5"
-        >
-          {isPending ? (
-            <Loader2Icon className="size-3.5 animate-spin" />
-          ) : (
-            <SparklesIcon className="size-3.5" />
-          )}
-          {evaluation ? "Re-evaluate" : "Evaluate ICP"}
-        </Button>
+        <div className="flex shrink-0 items-center gap-1.5">
+          {evaluation ? (
+            <Button
+              type="button"
+              size="sm"
+              variant="ghost"
+              disabled={disabled || isBusy}
+              onClick={handleClear}
+              className="gap-1.5 text-muted-foreground"
+            >
+              {isClearing ? (
+                <Loader2Icon className="size-3.5 animate-spin" />
+              ) : (
+                <Undo2Icon className="size-3.5" />
+              )}
+              Clear
+            </Button>
+          ) : null}
+          <Button
+            type="button"
+            size="sm"
+            variant={evaluation ? "outline" : "default"}
+            disabled={disabled || isBusy}
+            onClick={handleEvaluate}
+            className="gap-1.5"
+          >
+            {isPending ? (
+              <Loader2Icon className="size-3.5 animate-spin" />
+            ) : (
+              <SparklesIcon className="size-3.5" />
+            )}
+            {evaluation ? "Re-evaluate" : "Evaluate ICP"}
+          </Button>
+        </div>
       </div>
 
       <div className="space-y-1.5">
-        <Label htmlFor={`icp-context-${leadId}`} className="text-xs">
-          Additional context (optional)
+        <Label htmlFor={`icp-instructions-${leadId}`} className="text-xs">
+          Instructions (optional)
         </Label>
         <Textarea
-          id={`icp-context-${leadId}`}
-          value={additionalContext}
-          onChange={(event) => setAdditionalContext(event.target.value)}
-          placeholder="Paste company research, LinkedIn notes, or other context…"
+          id={`icp-instructions-${leadId}`}
+          value={instructions}
+          onChange={(event) => setInstructions(event.target.value)}
+          placeholder="Add evaluation notes, company research, or focus areas for this run…"
           rows={2}
-          disabled={disabled || isPending}
+          disabled={disabled || isBusy}
           className="min-h-16 resize-y text-sm"
         />
       </div>

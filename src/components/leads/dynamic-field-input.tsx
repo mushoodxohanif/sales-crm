@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { DatePicker } from "@/components/ui/date-picker";
 import { Input } from "@/components/ui/input";
@@ -16,11 +17,78 @@ import type { LeadFieldDefinition } from "@/lib/leads/field-values";
 
 export type DynamicFieldValue = string | number | boolean | string[] | null;
 
+function toExternalHref(value: string): string {
+  return value.includes("://") ? value : `https://${value}`;
+}
+
+function isValidExternalUrl(value: string): boolean {
+  try {
+    new URL(toExternalHref(value));
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+interface UrlCompactFieldProps {
+  field: LeadFieldDefinition;
+  value: DynamicFieldValue;
+  onChange: (value: DynamicFieldValue) => void;
+  disabled?: boolean;
+}
+
+function UrlCompactField({ field, value, onChange, disabled = false }: UrlCompactFieldProps) {
+  const [isEditing, setIsEditing] = useState(false);
+  const inputId = `field-${field.id}`;
+  const urlValue = typeof value === "string" ? value.trim() : "";
+  const href = urlValue && isValidExternalUrl(urlValue) ? toExternalHref(urlValue) : null;
+  const showLink = href && !isEditing;
+
+  if (showLink) {
+    return (
+      <div className="flex min-w-0 items-center gap-2">
+        <a
+          href={href}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="min-w-0 truncate text-sm text-primary hover:underline"
+        >
+          {urlValue}
+        </a>
+        {!disabled ? (
+          <button
+            type="button"
+            onClick={() => setIsEditing(true)}
+            className="shrink-0 text-muted-foreground text-xs hover:text-foreground"
+          >
+            Edit
+          </button>
+        ) : null}
+      </div>
+    );
+  }
+
+  return (
+    <Input
+      id={inputId}
+      type="text"
+      value={urlValue}
+      onChange={(event) => onChange(event.target.value)}
+      onBlur={() => setIsEditing(false)}
+      autoFocus={isEditing}
+      placeholder={field.label}
+      required={field.required}
+      disabled={disabled}
+    />
+  );
+}
+
 interface DynamicFieldInputProps {
   field: LeadFieldDefinition;
   value: DynamicFieldValue;
   onChange: (value: DynamicFieldValue) => void;
   disabled?: boolean;
+  compact?: boolean;
 }
 
 export function DynamicFieldInput({
@@ -28,6 +96,7 @@ export function DynamicFieldInput({
   value,
   onChange,
   disabled = false,
+  compact = false,
 }: DynamicFieldInputProps) {
   const inputId = `field-${field.id}`;
 
@@ -35,11 +104,29 @@ export function DynamicFieldInput({
     case "TEXT":
     case "EMAIL":
     case "PHONE":
-    case "URL":
       return (
         <Input
           id={inputId}
           type={field.fieldType === "EMAIL" ? "email" : "text"}
+          value={typeof value === "string" ? value : ""}
+          onChange={(event) => onChange(event.target.value)}
+          placeholder={field.label}
+          required={field.required}
+          disabled={disabled}
+        />
+      );
+
+    case "URL":
+      if (compact) {
+        return (
+          <UrlCompactField field={field} value={value} onChange={onChange} disabled={disabled} />
+        );
+      }
+
+      return (
+        <Input
+          id={inputId}
+          type="text"
           value={typeof value === "string" ? value : ""}
           onChange={(event) => onChange(event.target.value)}
           placeholder={field.label}
@@ -208,6 +295,7 @@ export function DynamicFieldList({
                     value={values[field.id] ?? null}
                     onChange={(value) => onChange(field.id, value)}
                     disabled={disabled}
+                    compact
                   />
                 </div>
               </>

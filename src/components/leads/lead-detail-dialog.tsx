@@ -35,6 +35,7 @@ interface LeadDetailDialogProps {
   focusCommentsOnOpen?: boolean;
   onLeadDeleted?: (leadId: string) => void;
   onIcpEvaluated?: (leadId: string, evaluation: LeadIcpEvaluationClient) => void;
+  onIcpCleared?: (leadId: string) => void;
 }
 
 export function LeadDetailDialog({
@@ -49,6 +50,7 @@ export function LeadDetailDialog({
   focusCommentsOnOpen = false,
   onLeadDeleted,
   onIcpEvaluated,
+  onIcpCleared,
 }: LeadDetailDialogProps) {
   if (!lead) {
     return null;
@@ -97,6 +99,7 @@ export function LeadDetailDialog({
                 initialEvaluation={lead.icpEvaluation}
                 disabled={disabled}
                 onEvaluated={(evaluation) => onIcpEvaluated?.(lead.id, evaluation)}
+                onCleared={() => onIcpCleared?.(lead.id)}
               />
             </div>
 
