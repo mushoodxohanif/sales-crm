@@ -12,5 +12,5 @@ export function getGeminiModel() {
   }
 
   const google = createGoogleGenerativeAI({ apiKey });
-  return google("gemini-2.0-flash");
+  return google("gemini-3.5-flash");
 }
