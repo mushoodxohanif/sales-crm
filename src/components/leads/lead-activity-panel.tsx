@@ -35,6 +35,7 @@ interface LeadActivityPanelProps {
   active: boolean;
   disabled?: boolean;
   autoFocusInput?: boolean;
+  showHeader?: boolean;
 }
 
 function getInitials(name: string | null): string {
@@ -74,6 +75,7 @@ export function LeadActivityPanel({
   active,
   disabled = false,
   autoFocusInput = false,
+  showHeader = true,
 }: LeadActivityPanelProps) {
   const router = useRouter();
   const { setActiveLeadCommentDialogId } = useNotifications();
@@ -208,9 +210,11 @@ export function LeadActivityPanel({
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
-      <div className="shrink-0 border-b px-4 py-3">
-        <h3 className="font-medium text-sm">Activity</h3>
-      </div>
+      {showHeader ? (
+        <div className="shrink-0 border-b px-4 py-3">
+          <h3 className="font-medium text-sm">Activity</h3>
+        </div>
+      ) : null}
 
       <div className="min-h-0 flex-1 overflow-y-auto px-4 py-3">
         {isLoading ? (

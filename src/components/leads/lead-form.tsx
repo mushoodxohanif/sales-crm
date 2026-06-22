@@ -145,12 +145,12 @@ export function LeadForm({
     <form
       onSubmit={handleSubmit}
       className={cn(
-        isDetail ? "flex min-h-0 flex-1 flex-col" : isDialog ? "space-y-4" : "space-y-8",
+        isDetail ? "flex min-h-0 flex-1 flex-col pt-5" : isDialog ? "space-y-4" : "space-y-8",
       )}
     >
       <section
         className={cn(
-          isDetail ? "min-h-0 flex-1 space-y-6 overflow-y-auto" : "space-y-4",
+          isDetail ? "min-h-0 flex-1 space-y-6 overflow-y-auto pb-5" : "space-y-4",
           !isDialog && !isDetail && "rounded-xl border bg-card p-6 shadow-xs",
         )}
       >

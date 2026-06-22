@@ -184,6 +184,25 @@ export function LeadKanban({
     setSelectedLead(null);
   }
 
+  function handleLeadUpdated(updatedLead: LeadKanbanLead) {
+    setStages((current) => {
+      const withoutLead = current.map((stage) => ({
+        ...stage,
+        leads: stage.leads.filter((lead) => lead.id !== updatedLead.id),
+      }));
+
+      return withoutLead.map((stage) =>
+        stage.id === updatedLead.currentStageId
+          ? {
+              ...stage,
+              leads: [updatedLead, ...stage.leads],
+            }
+          : stage,
+      );
+    });
+    setSelectedLead(updatedLead);
+  }
+
   function handleIcpEvaluated(leadId: string, evaluation: LeadIcpEvaluationClient) {
     setStages((current) =>
       current.map((stage) => ({
@@ -263,7 +282,10 @@ export function LeadKanban({
         if (stage.id === targetStageId) {
           return {
             ...stage,
-            leads: [{ ...lead, currentStageId: targetStageId }, ...stage.leads],
+            leads: [
+              { ...lead, currentStageId: targetStageId, updatedAt: new Date().toISOString() },
+              ...stage.leads,
+            ],
           };
         }
 
@@ -320,7 +342,12 @@ export function LeadKanban({
               </button>
             </div>
           ) : (
-            <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
+            <DndContext
+              id={`lead-kanban-${campaignId}`}
+              sensors={sensors}
+              onDragStart={handleDragStart}
+              onDragEnd={handleDragEnd}
+            >
               <div className="@container/kanban min-h-0 min-w-0 flex-1 overflow-x-auto overflow-y-hidden">
                 <div className="flex h-full w-max min-w-full gap-4 pb-2">
                   {filteredStages.map((stage) => (
@@ -376,6 +403,7 @@ export function LeadKanban({
             disabled={disabled}
             focusCommentsOnOpen={focusCommentsOnOpen}
             onLeadDeleted={handleLeadDeleted}
+            onLeadUpdated={handleLeadUpdated}
             onIcpEvaluated={handleIcpEvaluated}
             onIcpCleared={handleIcpCleared}
           />

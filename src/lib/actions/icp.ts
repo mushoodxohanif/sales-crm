@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { auth } from "@/auth";
+import { touchLeadUpdatedAt } from "@/lib/actions/leads";
 import { type ActionResult, actionError, actionSuccess } from "@/lib/actions/types";
 import { isGeminiConfigured } from "@/lib/ai/gemini";
 import { evaluateLeadIcp as runIcpEvaluation } from "@/lib/ai/icp-evaluation";
@@ -156,19 +157,25 @@ export async function evaluateLeadIcp(
       profileId: profile.id,
     };
 
-    const saved = await db.leadIcpEvaluation.create({
-      data: {
-        leadId: lead.id,
-        userId,
-        score: result.score,
-        verdict: result.verdict,
-        decision: result.decision,
-        industry: result.industry,
-        reasoning: result.reasoning,
-        painPoints: result.painPoints,
-        automationUseCases: result.automationUseCases,
-        inputContext,
-      },
+    const saved = await db.$transaction(async (tx) => {
+      const evaluation = await tx.leadIcpEvaluation.create({
+        data: {
+          leadId: lead.id,
+          userId,
+          score: result.score,
+          verdict: result.verdict,
+          decision: result.decision,
+          industry: result.industry,
+          reasoning: result.reasoning,
+          painPoints: result.painPoints,
+          automationUseCases: result.automationUseCases,
+          inputContext,
+        },
+      });
+
+      await touchLeadUpdatedAt(lead.id, tx);
+
+      return evaluation;
     });
 
     revalidateLeadIcpPaths(lead.campaign.id, lead.id);
@@ -212,8 +219,12 @@ export async function clearLeadIcpEvaluation(input: unknown): Promise<ActionResu
     return actionError("Cannot clear ICP evaluation for leads in an archived campaign.");
   }
 
-  await db.leadIcpEvaluation.deleteMany({
-    where: { leadId: lead.id },
+  await db.$transaction(async (tx) => {
+    await tx.leadIcpEvaluation.deleteMany({
+      where: { leadId: lead.id },
+    });
+
+    await touchLeadUpdatedAt(lead.id, tx);
   });
 
   revalidateLeadIcpPaths(lead.campaign.id, lead.id);

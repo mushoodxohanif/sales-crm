@@ -22,6 +22,12 @@ function createDbClient() {
 
 export const db = globalForPrisma.db ?? createDbClient();
 
+/** Neon / remote Postgres can exceed Prisma's default 5s interactive transaction limit. */
+export const interactiveTransactionOptions = {
+  maxWait: 10_000,
+  timeout: 15_000,
+} as const;
+
 if (process.env.NODE_ENV !== "production") {
   globalForPrisma.db = db;
 }

@@ -18,7 +18,7 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { GripVerticalIcon } from "lucide-react";
-import type { ReactNode } from "react";
+import { type ReactNode, useId } from "react";
 
 import { cn } from "@/lib/utils";
 
@@ -66,6 +66,7 @@ interface SortableListProps<T extends { id: string }> {
   onReorder: (items: T[]) => void;
   disabled?: boolean;
   className?: string;
+  contextId?: string;
   renderItem: (item: T, index: number) => ReactNode;
 }
 
@@ -74,8 +75,10 @@ export function SortableList<T extends { id: string }>({
   onReorder,
   disabled = false,
   className,
+  contextId,
   renderItem,
 }: SortableListProps<T>) {
+  const fallbackContextId = useId();
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
@@ -99,7 +102,12 @@ export function SortableList<T extends { id: string }>({
   }
 
   return (
-    <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+    <DndContext
+      id={contextId ?? fallbackContextId}
+      sensors={sensors}
+      collisionDetection={closestCenter}
+      onDragEnd={handleDragEnd}
+    >
       <SortableContext items={items.map((item) => item.id)} strategy={verticalListSortingStrategy}>
         <div className={cn("space-y-3", className)}>
           {items.map((item, index) => (

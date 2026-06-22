@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { auth } from "@/auth";
 import { CampaignStatus } from "@/generated/prisma/client";
+import { touchLeadUpdatedAt } from "@/lib/actions/leads";
 import { type ActionResult, actionError, actionSuccess } from "@/lib/actions/types";
 import { getLeadComments } from "@/lib/data/lead-comments";
 import { listWorkspaceUsers } from "@/lib/data/users";
@@ -139,7 +140,7 @@ export async function createLeadComment(input: unknown): Promise<ActionResult<Le
   const preview = body.length > 120 ? `${body.slice(0, 117)}...` : body;
 
   const comment = await db.$transaction(async (tx) => {
-    return tx.leadComment.create({
+    const created = await tx.leadComment.create({
       data: {
         leadId,
         authorId: userId,
@@ -160,6 +161,10 @@ export async function createLeadComment(input: unknown): Promise<ActionResult<Le
         },
       },
     });
+
+    await touchLeadUpdatedAt(leadId, tx);
+
+    return created;
   });
 
   const priorParticipants = await db.leadComment.findMany({

@@ -1,13 +1,15 @@
 "use client";
 
 import { ClockIcon } from "lucide-react";
+import { useEffect, useState } from "react";
 import { DeleteLeadButton } from "@/components/leads/delete-lead-button";
 import { IcpEvaluationPanel } from "@/components/leads/icp-evaluation-panel";
-import { LeadActivityPanel } from "@/components/leads/lead-activity-panel";
 import type { LeadKanbanLead } from "@/components/leads/lead-card";
+import { LeadDetailSidebar } from "@/components/leads/lead-detail-sidebar";
 import { LeadForm } from "@/components/leads/lead-form";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
+import type { RevertedLeadPayload } from "@/lib/actions/lead-versions";
 import type { LeadIcpEvaluationClient } from "@/lib/icp/serialization";
 import {
   fieldValuesToMap,
@@ -34,6 +36,7 @@ interface LeadDetailDialogProps {
   disabled?: boolean;
   focusCommentsOnOpen?: boolean;
   onLeadDeleted?: (leadId: string) => void;
+  onLeadUpdated?: (lead: LeadKanbanLead) => void;
   onIcpEvaluated?: (leadId: string, evaluation: LeadIcpEvaluationClient) => void;
   onIcpCleared?: (leadId: string) => void;
 }
@@ -49,14 +52,47 @@ export function LeadDetailDialog({
   disabled = false,
   focusCommentsOnOpen = false,
   onLeadDeleted,
+  onLeadUpdated,
   onIcpEvaluated,
   onIcpCleared,
 }: LeadDetailDialogProps) {
-  if (!lead) {
+  const [formRefreshKey, setFormRefreshKey] = useState(0);
+  const [displayLead, setDisplayLead] = useState(lead);
+
+  useEffect(() => {
+    if (!lead) {
+      return;
+    }
+
+    setDisplayLead(lead);
+    setFormRefreshKey((current) => current + 1);
+  }, [lead]);
+
+  if (!lead || !displayLead) {
     return null;
   }
 
-  const title = getLeadDisplayTitle(fields, lead.fieldValues);
+  const activeLead = displayLead;
+  const title = getLeadDisplayTitle(fields, activeLead.fieldValues);
+
+  function handleReverted(revertedLead: RevertedLeadPayload) {
+    const updatedLead: LeadKanbanLead = {
+      id: activeLead.id,
+      currentStageId: revertedLead.currentStageId,
+      fieldValues: revertedLead.fieldValues.map((fieldValue) => ({
+        fieldId: fieldValue.fieldId,
+        value: fieldValue.value,
+      })),
+      createdAt: activeLead.createdAt,
+      updatedAt: revertedLead.updatedAt,
+      commentCount: activeLead.commentCount,
+      icpEvaluation: activeLead.icpEvaluation,
+    };
+
+    setDisplayLead(updatedLead);
+    setFormRefreshKey((current) => current + 1);
+    onLeadUpdated?.(updatedLead);
+  }
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -82,12 +118,12 @@ export function LeadDetailDialog({
                 <h2 className="font-semibold text-2xl leading-tight tracking-tight">{title}</h2>
                 <div className="flex items-center gap-1.5 text-muted-foreground text-xs">
                   <ClockIcon className="size-3.5 shrink-0" />
-                  <span>Updated {formatRelativeTime(lead.updatedAt)}</span>
-                  {lead.commentCount && lead.commentCount > 0 ? (
+                  <span>Updated {formatRelativeTime(activeLead.updatedAt)}</span>
+                  {activeLead.commentCount && activeLead.commentCount > 0 ? (
                     <span className="text-border">·</span>
                   ) : null}
-                  {lead.commentCount && lead.commentCount > 0 ? (
-                    <span>{lead.commentCount} comments</span>
+                  {activeLead.commentCount && activeLead.commentCount > 0 ? (
+                    <span>{activeLead.commentCount} comments</span>
                   ) : null}
                 </div>
               </div>
@@ -95,34 +131,35 @@ export function LeadDetailDialog({
 
             <div className="shrink-0 px-6">
               <IcpEvaluationPanel
-                leadId={lead.id}
-                initialEvaluation={lead.icpEvaluation}
+                leadId={activeLead.id}
+                initialEvaluation={activeLead.icpEvaluation}
                 disabled={disabled}
-                onEvaluated={(evaluation) => onIcpEvaluated?.(lead.id, evaluation)}
-                onCleared={() => onIcpCleared?.(lead.id)}
+                onEvaluated={(evaluation) => onIcpEvaluated?.(activeLead.id, evaluation)}
+                onCleared={() => onIcpCleared?.(activeLead.id)}
               />
             </div>
 
             <div className="flex min-h-0 flex-1 flex-col px-6">
               <LeadForm
+                key={formRefreshKey}
                 campaignId={campaignId}
                 campaignName={campaignName}
                 fields={fields}
                 stages={stages}
-                initialStageId={lead.currentStageId}
-                initialValues={fieldValuesToMap(lead.fieldValues)}
-                leadId={lead.id}
+                initialStageId={activeLead.currentStageId}
+                initialValues={fieldValuesToMap(activeLead.fieldValues)}
+                leadId={activeLead.id}
                 disabled={disabled}
                 layout="detail"
                 footerLeading={
                   <DeleteLeadButton
-                    leadId={lead.id}
+                    leadId={activeLead.id}
                     campaignId={campaignId}
                     leadTitle={title}
                     disabled={disabled}
                     size="sm"
                     onDeleted={() => {
-                      onLeadDeleted?.(lead.id);
+                      onLeadDeleted?.(activeLead.id);
                       onOpenChange(false);
                     }}
                   />
@@ -132,12 +169,13 @@ export function LeadDetailDialog({
             </div>
           </div>
 
-          <div className="flex min-h-[280px] w-full shrink-0 flex-col bg-muted/20 lg:min-h-0 lg:w-[380px]">
-            <LeadActivityPanel
-              leadId={lead.id}
+          <div className="flex min-h-[280px] w-full flex-1 flex-col bg-muted/20 lg:min-h-0 lg:w-[380px]">
+            <LeadDetailSidebar
+              leadId={activeLead.id}
               active={open}
               disabled={disabled}
-              autoFocusInput={focusCommentsOnOpen}
+              focusCommentsOnOpen={focusCommentsOnOpen}
+              onReverted={handleReverted}
             />
           </div>
         </div>

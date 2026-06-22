@@ -36,6 +36,7 @@ model User {
   notificationPreferences     UserNotificationPreferences?
   dailyTargets                DailyTarget[]
   leadStageTransitions        LeadStageTransition[]
+  leadVersions                LeadVersion[]
   icpEvaluations              LeadIcpEvaluation[]
   tasks                       Task[]
   createdAt                   DateTime                     @default(now())
@@ -88,6 +89,13 @@ enum TaskStatus {
 enum TaskSource {
   MANUAL
   AI_GENERATED
+}
+
+enum LeadVersionChangeType {
+  CREATED
+  UPDATED
+  STAGE_MOVED
+  REVERTED
 }
 
 model CampaignType {
@@ -145,6 +153,7 @@ model LeadStage {
   dailyTargets    DailyTarget[]
   transitionsFrom LeadStageTransition[] @relation("TransitionFromStage")
   transitionsTo   LeadStageTransition[] @relation("TransitionToStage")
+  leadVersions    LeadVersion[]
 
   @@unique([campaignId, slug])
 }
@@ -160,6 +169,7 @@ model Lead {
   sourceImportId   String?
   sourceImport     LeadImport?           @relation(fields: [sourceImportId], references: [id], onDelete: SetNull)
   stageTransitions LeadStageTransition[]
+  versions         LeadVersion[]
   icpEvaluations   LeadIcpEvaluation[]
   tasks            Task[]
   createdAt        DateTime              @default(now())
@@ -300,6 +310,22 @@ model LeadStageTransition {
   createdAt   DateTime   @default(now())
 
   @@index([userId, toStageId, createdAt])
+}
+
+model LeadVersion {
+  id          String                @id @default(cuid())
+  leadId      String
+  lead        Lead                  @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  userId      String?
+  user        User?                 @relation(fields: [userId], references: [id], onDelete: SetNull)
+  changeType  LeadVersionChangeType
+  stageId     String
+  stage       LeadStage             @relation(fields: [stageId], references: [id], onDelete: Restrict)
+  fieldValues Json
+  summary     String
+  createdAt   DateTime              @default(now())
+
+  @@index([leadId, createdAt(sort: Desc)])
 }
 
 model WorkspaceIcpProfile {

@@ -4,11 +4,18 @@ import { revalidatePath } from "next/cache";
 import { auth } from "@/auth";
 import { CampaignStatus, type Prisma } from "@/generated/prisma/client";
 import { type ActionResult, actionError, actionSuccess } from "@/lib/actions/types";
-import { db } from "@/lib/db";
+import { db, interactiveTransactionOptions } from "@/lib/db";
 import { assertNoDuplicateFieldValues } from "@/lib/leads/duplicates";
 import { toFieldDefinitions } from "@/lib/leads/field-values";
 import { recordStageTransition } from "@/lib/leads/stage-transitions";
 import { validateLeadFieldValues } from "@/lib/leads/validation";
+import {
+  buildVersionSummary,
+  ensureBaselineVersionIfMissing,
+  getLeadSnapshot,
+  recordLeadVersion,
+  serializeFieldValues,
+} from "@/lib/leads/versions";
 import {
   createLeadSchema,
   deleteLeadSchema,
@@ -66,6 +73,15 @@ async function getActiveCampaign(campaignId: string) {
         orderBy: { sortOrder: "asc" },
       },
     },
+  });
+}
+
+type LeadDbClient = Pick<typeof db, "lead">;
+
+export async function touchLeadUpdatedAt(leadId: string, client: LeadDbClient = db) {
+  await client.lead.update({
+    where: { id: leadId },
+    data: { updatedAt: new Date() },
   });
 }
 
@@ -151,6 +167,28 @@ export async function createLead(input: unknown): Promise<ActionResult<{ id: str
     select: { id: true },
   });
 
+  const userId = await requireAuthUserId();
+  const snapshot = {
+    stageId,
+    fieldValues: serializeFieldValues(validation.normalized),
+  };
+
+  await recordLeadVersion(
+    {
+      leadId: lead.id,
+      userId,
+      changeType: "CREATED",
+      snapshot,
+      summary: buildVersionSummary({
+        changeType: "CREATED",
+        fields,
+        previousSnapshot: null,
+        nextSnapshot: snapshot,
+      }),
+    },
+    db,
+  );
+
   revalidateLeadPaths(campaignId, lead.id);
 
   return actionSuccess({ id: lead.id });
@@ -181,6 +219,12 @@ export async function updateLead(input: unknown): Promise<ActionResult<{ id: str
       id: true,
       currentStageId: true,
       campaignId: true,
+      fieldValues: {
+        select: {
+          fieldId: true,
+          value: true,
+        },
+      },
       campaign: {
         select: {
           status: true,
@@ -189,6 +233,12 @@ export async function updateLead(input: unknown): Promise<ActionResult<{ id: str
               fields: {
                 orderBy: { sortOrder: "asc" },
               },
+            },
+          },
+          stages: {
+            select: {
+              id: true,
+              name: true,
             },
           },
         },
@@ -238,11 +288,39 @@ export async function updateLead(input: unknown): Promise<ActionResult<{ id: str
     }
   }
 
+  const fields = toFieldDefinitions(lead.campaign.campaignType.fields);
+  const previousSnapshot = {
+    stageId: lead.currentStageId,
+    fieldValues: serializeFieldValues(lead.fieldValues),
+  };
+  const nextStageId = currentStageId ?? lead.currentStageId;
+  const stageChanged = Boolean(currentStageId && currentStageId !== lead.currentStageId);
+  const fieldValuesChanged = Boolean(normalizedFieldValues);
+
+  if (!stageChanged && !fieldValuesChanged) {
+    return actionSuccess({ id });
+  }
+
+  const previousStage = lead.campaign.stages.find((stage) => stage.id === lead.currentStageId);
+  const nextStage = lead.campaign.stages.find((stage) => stage.id === nextStageId);
+
   await db.$transaction(async (tx) => {
+    await ensureBaselineVersionIfMissing(
+      {
+        leadId: id,
+        userId,
+        snapshot: previousSnapshot,
+        fields,
+        stageName: previousStage?.name,
+      },
+      tx,
+    );
+
     await tx.lead.update({
       where: { id },
       data: {
         ...(currentStageId ? { currentStageId } : {}),
+        updatedAt: new Date(),
       },
     });
 
@@ -288,7 +366,34 @@ export async function updateLead(input: unknown): Promise<ActionResult<{ id: str
         });
       }
     }
-  });
+
+    const nextSnapshot = await getLeadSnapshot(id, tx);
+
+    if (!nextSnapshot) {
+      return;
+    }
+
+    const changeType =
+      stageChanged && !fieldValuesChanged ? ("STAGE_MOVED" as const) : ("UPDATED" as const);
+
+    await recordLeadVersion(
+      {
+        leadId: id,
+        userId,
+        changeType,
+        snapshot: nextSnapshot,
+        summary: buildVersionSummary({
+          changeType,
+          fields,
+          previousSnapshot,
+          nextSnapshot,
+          previousStageName: previousStage?.name,
+          nextStageName: nextStage?.name,
+        }),
+      },
+      tx,
+    );
+  }, interactiveTransactionOptions);
 
   revalidateLeadPaths(lead.campaignId, id);
 
@@ -320,8 +425,29 @@ export async function moveLeadToStage(input: unknown): Promise<ActionResult<{ id
       id: true,
       currentStageId: true,
       campaignId: true,
+      fieldValues: {
+        select: {
+          fieldId: true,
+          value: true,
+        },
+      },
       campaign: {
-        select: { status: true },
+        select: {
+          status: true,
+          campaignType: {
+            include: {
+              fields: {
+                orderBy: { sortOrder: "asc" },
+              },
+            },
+          },
+          stages: {
+            select: {
+              id: true,
+              name: true,
+            },
+          },
+        },
       },
     },
   });
@@ -343,10 +469,32 @@ export async function moveLeadToStage(input: unknown): Promise<ActionResult<{ id
     return actionSuccess({ id: leadId });
   }
 
+  const fields = toFieldDefinitions(lead.campaign.campaignType.fields);
+  const previousSnapshot = {
+    stageId: lead.currentStageId,
+    fieldValues: serializeFieldValues(lead.fieldValues),
+  };
+  const previousStage = lead.campaign.stages.find((item) => item.id === lead.currentStageId);
+  const nextStage = lead.campaign.stages.find((item) => item.id === stageId);
+
   await db.$transaction(async (tx) => {
+    await ensureBaselineVersionIfMissing(
+      {
+        leadId,
+        userId,
+        snapshot: previousSnapshot,
+        fields,
+        stageName: previousStage?.name,
+      },
+      tx,
+    );
+
     await tx.lead.update({
       where: { id: leadId },
-      data: { currentStageId: stageId },
+      data: {
+        currentStageId: stageId,
+        updatedAt: new Date(),
+      },
     });
 
     await recordStageTransition(
@@ -358,7 +506,31 @@ export async function moveLeadToStage(input: unknown): Promise<ActionResult<{ id
       },
       tx,
     );
-  });
+
+    const nextSnapshot = await getLeadSnapshot(leadId, tx);
+
+    if (!nextSnapshot) {
+      return;
+    }
+
+    await recordLeadVersion(
+      {
+        leadId,
+        userId,
+        changeType: "STAGE_MOVED",
+        snapshot: nextSnapshot,
+        summary: buildVersionSummary({
+          changeType: "STAGE_MOVED",
+          fields,
+          previousSnapshot,
+          nextSnapshot,
+          previousStageName: previousStage?.name,
+          nextStageName: nextStage?.name,
+        }),
+      },
+      tx,
+    );
+  }, interactiveTransactionOptions);
 
   revalidateLeadPaths(lead.campaignId, leadId);
 

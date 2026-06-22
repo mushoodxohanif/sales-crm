@@ -569,12 +569,16 @@ export function hasActiveKanbanFilters(state: KanbanFilterState): boolean {
   return countActiveKanbanFilters(state) > 0;
 }
 
-export function getDaysSinceCreation(createdAt: string): number {
-  const timestamp = new Date(createdAt).getTime();
+export function getDaysSinceDate(date: string): number {
+  const timestamp = new Date(date).getTime();
 
   if (Number.isNaN(timestamp)) {
     return 0;
   }
 
   return Math.floor((Date.now() - timestamp) / 86_400_000);
+}
+
+export function getDaysSinceCreation(createdAt: string): number {
+  return getDaysSinceDate(createdAt);
 }

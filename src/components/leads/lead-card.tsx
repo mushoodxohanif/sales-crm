@@ -10,7 +10,7 @@ import {
   getLeadDisplayTitle,
   type LeadFieldDefinition,
 } from "@/lib/leads/field-values";
-import { getDaysSinceCreation } from "@/lib/leads/kanban-filters";
+import { getDaysSinceDate } from "@/lib/leads/kanban-filters";
 
 export interface LeadKanbanLead {
   id: string;
@@ -45,14 +45,14 @@ export function LeadCard({ fields, lead, disabled = false, onOpen }: LeadCardPro
     lead.fieldValues.map((fieldValue) => [fieldValue.fieldId, fieldValue.value]),
   );
   const title = getLeadDisplayTitle(fields, lead.fieldValues);
-  const daysInPipeline = getDaysSinceCreation(lead.createdAt);
+  const daysSinceUpdate = getDaysSinceDate(lead.updatedAt);
 
   return (
     <>
       <div className="relative min-w-0 flex-1 pr-5">
         <div className="absolute top-0 right-0 flex flex-col items-end gap-0.5">
           <span className="text-muted-foreground text-[10px] tabular-nums">
-            {daysInPipeline}d<span className="sr-only"> days in pipeline</span>
+            {daysSinceUpdate}d<span className="sr-only"> days since last update</span>
           </span>
           {lead.icpEvaluation ? <IcpDecisionBadge evaluation={lead.icpEvaluation} /> : null}
         </div>
