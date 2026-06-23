@@ -10,26 +10,26 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { createCampaignType } from "@/lib/actions/campaign-types";
 import {
+  blocksToApiInput,
   createEmptyField,
-  type FieldBuilderValue,
-  fieldBuilderToInput,
+  type FieldBuilderBlock,
 } from "@/lib/campaign-types/fields";
 import { slugify } from "@/lib/utils/slug";
 
 interface CreateCampaignTypeFormProps {
-  initialFields?: FieldBuilderValue[];
+  initialBlocks?: FieldBuilderBlock[];
 }
 
-export function CreateCampaignTypeForm({ initialFields = [] }: CreateCampaignTypeFormProps) {
+export function CreateCampaignTypeForm({
+  initialBlocks = [{ type: "field", field: createEmptyField(0) }],
+}: CreateCampaignTypeFormProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [name, setName] = useState("");
   const [slug, setSlug] = useState("");
   const [slugEdited, setSlugEdited] = useState(false);
   const [description, setDescription] = useState("");
-  const [fields, setFields] = useState<FieldBuilderValue[]>(
-    initialFields.length > 0 ? initialFields : [createEmptyField(0)],
-  );
+  const [blocks, setBlocks] = useState<FieldBuilderBlock[]>(initialBlocks);
 
   function handleNameChange(value: string) {
     setName(value);
@@ -47,7 +47,7 @@ export function CreateCampaignTypeForm({ initialFields = [] }: CreateCampaignTyp
         name,
         slug,
         description: description || undefined,
-        fields: fields.map(fieldBuilderToInput),
+        blocks: blocksToApiInput(blocks),
       });
 
       if (!result.success) {
@@ -112,7 +112,7 @@ export function CreateCampaignTypeForm({ initialFields = [] }: CreateCampaignTyp
         </div>
       </section>
 
-      <FieldBuilder fields={fields} onChange={setFields} disabled={isPending} />
+      <FieldBuilder blocks={blocks} onChange={setBlocks} disabled={isPending} />
 
       <div className="flex items-center justify-end gap-3">
         <Button type="button" variant="outline" onClick={() => router.back()} disabled={isPending}>

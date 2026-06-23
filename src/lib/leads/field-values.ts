@@ -15,7 +15,13 @@ export type LeadFieldDefinition = {
   isUnique: boolean;
   sortOrder: number;
   options: string[];
+  groupId: string | null;
+  groupLabel: string | null;
 };
+
+export type FieldDisplayBlock =
+  | { type: "field"; field: LeadFieldDefinition }
+  | { type: "group"; label: string; fields: LeadFieldDefinition[] };
 
 export function parseFieldOptions(options: unknown): string[] {
   if (!options || !Array.isArray(options)) {
@@ -36,6 +42,8 @@ export function toFieldDefinitions(
     isUnique: boolean;
     sortOrder: number;
     options: unknown;
+    groupId?: string | null;
+    group?: { id: string; label: string } | null;
   }>,
 ): LeadFieldDefinition[] {
   return fields.map((field) => ({
@@ -48,7 +56,42 @@ export function toFieldDefinitions(
     isUnique: field.isUnique,
     sortOrder: field.sortOrder,
     options: parseFieldOptions(field.options),
+    groupId: field.groupId ?? field.group?.id ?? null,
+    groupLabel: field.group?.label ?? null,
   }));
+}
+
+export function fieldsToDisplayBlocks(fields: LeadFieldDefinition[]): FieldDisplayBlock[] {
+  const sorted = [...fields].sort((left, right) => left.sortOrder - right.sortOrder);
+  const blocks: FieldDisplayBlock[] = [];
+  const renderedGroupIds = new Set<string>();
+
+  for (const field of sorted) {
+    if (!field.groupId) {
+      blocks.push({ type: "field", field });
+      continue;
+    }
+
+    if (renderedGroupIds.has(field.groupId)) {
+      continue;
+    }
+
+    const groupFields = sorted.filter((item) => item.groupId === field.groupId);
+
+    if (groupFields.length === 1) {
+      blocks.push({ type: "field", field: groupFields[0] });
+      continue;
+    }
+
+    renderedGroupIds.add(field.groupId);
+    blocks.push({
+      type: "group",
+      label: field.groupLabel ?? "Group",
+      fields: groupFields,
+    });
+  }
+
+  return blocks;
 }
 
 export function fieldValuesToMap(

@@ -1,3 +1,4 @@
+import { campaignTypeFieldsQuery } from "@/lib/campaign-types/queries";
 import { db } from "@/lib/db";
 
 export async function getCampaignTypes() {
@@ -18,9 +19,8 @@ export async function getCampaignTypeWithFields(id: string) {
   return db.campaignType.findUnique({
     where: { id },
     include: {
-      fields: {
-        orderBy: { sortOrder: "asc" },
-      },
+      fields: campaignTypeFieldsQuery,
+      fieldGroups: true,
       _count: {
         select: {
           campaigns: true,

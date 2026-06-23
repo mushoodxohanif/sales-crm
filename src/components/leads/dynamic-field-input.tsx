@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import type { LeadFieldDefinition } from "@/lib/leads/field-values";
+import { fieldsToDisplayBlocks } from "@/lib/leads/field-values";
 
 export type DynamicFieldValue = string | number | boolean | string[] | null;
 
@@ -259,6 +260,85 @@ interface DynamicFieldListProps {
   compact?: boolean;
 }
 
+function renderCompactField(
+  field: LeadFieldDefinition,
+  values: Record<string, DynamicFieldValue>,
+  onChange: (fieldId: string, value: DynamicFieldValue) => void,
+  disabled: boolean,
+) {
+  return (
+    <div key={field.id} className="flex flex-col gap-1.5 sm:flex-row sm:items-start sm:gap-4">
+      {field.fieldType !== "CHECKBOX" ? (
+        <>
+          <Label
+            htmlFor={`field-${field.id}`}
+            className="shrink-0 text-muted-foreground text-xs sm:w-28 sm:pt-2"
+          >
+            {field.label}
+            {field.required ? <span className="text-destructive"> *</span> : null}
+          </Label>
+          <div className="min-w-0 flex-1">
+            <DynamicFieldInput
+              field={field}
+              value={values[field.id] ?? null}
+              onChange={(value) => onChange(field.id, value)}
+              disabled={disabled}
+              compact
+            />
+          </div>
+        </>
+      ) : (
+        <div className="sm:pl-28">
+          <DynamicFieldInput
+            field={field}
+            value={values[field.id] ?? false}
+            onChange={(value) => onChange(field.id, value)}
+            disabled={disabled}
+          />
+        </div>
+      )}
+    </div>
+  );
+}
+
+function renderStandardField(
+  field: LeadFieldDefinition,
+  values: Record<string, DynamicFieldValue>,
+  onChange: (fieldId: string, value: DynamicFieldValue) => void,
+  disabled: boolean,
+) {
+  return (
+    <div
+      key={field.id}
+      className={
+        field.fieldType === "TEXTAREA" || field.fieldType === "MULTI_SELECT" ? "md:col-span-2" : ""
+      }
+    >
+      {field.fieldType !== "CHECKBOX" ? (
+        <div className="space-y-2">
+          <Label htmlFor={`field-${field.id}`}>
+            {field.label}
+            {field.required ? <span className="text-destructive"> *</span> : null}
+          </Label>
+          <DynamicFieldInput
+            field={field}
+            value={values[field.id] ?? null}
+            onChange={(value) => onChange(field.id, value)}
+            disabled={disabled}
+          />
+        </div>
+      ) : (
+        <DynamicFieldInput
+          field={field}
+          value={values[field.id] ?? false}
+          onChange={(value) => onChange(field.id, value)}
+          disabled={disabled}
+        />
+      )}
+    </div>
+  );
+}
+
 export function DynamicFieldList({
   fields,
   values,
@@ -275,80 +355,52 @@ export function DynamicFieldList({
     );
   }
 
+  const blocks = fieldsToDisplayBlocks(fields);
+
   if (compact) {
     return (
-      <div className="space-y-4">
-        {fields.map((field) => (
-          <div key={field.id} className="flex flex-col gap-1.5 sm:flex-row sm:items-start sm:gap-4">
-            {field.fieldType !== "CHECKBOX" ? (
-              <>
-                <Label
-                  htmlFor={`field-${field.id}`}
-                  className="shrink-0 text-muted-foreground text-xs sm:w-28 sm:pt-2"
-                >
-                  {field.label}
-                  {field.required ? <span className="text-destructive"> *</span> : null}
-                </Label>
-                <div className="min-w-0 flex-1">
-                  <DynamicFieldInput
-                    field={field}
-                    value={values[field.id] ?? null}
-                    onChange={(value) => onChange(field.id, value)}
-                    disabled={disabled}
-                    compact
-                  />
-                </div>
-              </>
-            ) : (
-              <div className="sm:pl-28">
-                <DynamicFieldInput
-                  field={field}
-                  value={values[field.id] ?? false}
-                  onChange={(value) => onChange(field.id, value)}
-                  disabled={disabled}
-                />
+      <div className="space-y-6">
+        {blocks.map((block) => {
+          if (block.type === "field") {
+            return renderCompactField(block.field, values, onChange, disabled);
+          }
+
+          return (
+            <div key={block.fields[0]?.groupId ?? block.label} className="space-y-4">
+              <h4 className="font-medium text-sm">{block.label}</h4>
+              <div className="space-y-4">
+                {block.fields.map((field) => renderCompactField(field, values, onChange, disabled))}
               </div>
-            )}
-          </div>
-        ))}
+            </div>
+          );
+        })}
       </div>
     );
   }
 
   return (
-    <div className="grid gap-4 md:grid-cols-2">
-      {fields.map((field) => (
-        <div
-          key={field.id}
-          className={
-            field.fieldType === "TEXTAREA" || field.fieldType === "MULTI_SELECT"
-              ? "md:col-span-2"
-              : ""
-          }
-        >
-          {field.fieldType !== "CHECKBOX" ? (
-            <div className="space-y-2">
-              <Label htmlFor={`field-${field.id}`}>
-                {field.label}
-                {field.required ? <span className="text-destructive"> *</span> : null}
-              </Label>
-              <DynamicFieldInput
-                field={field}
-                value={values[field.id] ?? null}
-                onChange={(value) => onChange(field.id, value)}
-                disabled={disabled}
-              />
+    <div className="space-y-6">
+      {blocks.map((block) => {
+        if (block.type === "field") {
+          return (
+            <div key={block.field.id} className="grid gap-4 md:grid-cols-2">
+              {renderStandardField(block.field, values, onChange, disabled)}
             </div>
-          ) : (
-            <DynamicFieldInput
-              field={field}
-              value={values[field.id] ?? false}
-              onChange={(value) => onChange(field.id, value)}
-              disabled={disabled}
-            />
-          )}
-        </div>
-      ))}
+          );
+        }
+
+        return (
+          <section
+            key={block.fields[0]?.groupId ?? block.label}
+            className="space-y-4 rounded-xl border bg-muted/10 p-4"
+          >
+            <h3 className="font-medium text-sm">{block.label}</h3>
+            <div className="grid gap-4 md:grid-cols-2">
+              {block.fields.map((field) => renderStandardField(field, values, onChange, disabled))}
+            </div>
+          </section>
+        );
+      })}
     </div>
   );
 }

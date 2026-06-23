@@ -33,12 +33,57 @@ export const campaignTypeFieldSchema = z
     }
   });
 
+export const campaignTypeFieldGroupSchema = z.object({
+  id: cuidSchema.optional(),
+  label: z.string().min(1).max(120),
+  fieldIds: z.array(cuidSchema).default([]),
+  fieldKeys: z.array(fieldKeySchema).default([]),
+});
+
+export const campaignTypeFieldBlockSchema = z.discriminatedUnion("type", [
+  z.object({
+    type: z.literal("field"),
+    field: campaignTypeFieldSchema,
+  }),
+  z.object({
+    type: z.literal("group"),
+    group: z.object({
+      id: cuidSchema.optional(),
+      label: z.string().min(1).max(120),
+      fields: z.array(campaignTypeFieldSchema).min(2),
+    }),
+  }),
+]);
+
+function flattenBlockFields(
+  blocks: Array<
+    | { type: "field"; field: { showOnKanbanCard?: boolean } }
+    | { type: "group"; group: { fields: Array<{ showOnKanbanCard?: boolean }> } }
+  >,
+) {
+  const fields: Array<{ showOnKanbanCard?: boolean }> = [];
+
+  for (const block of blocks) {
+    if (block.type === "field") {
+      fields.push(block.field);
+      continue;
+    }
+
+    fields.push(...block.group.fields);
+  }
+
+  return fields;
+}
+
 function validateKanbanCardFieldLimit(
-  fields: Array<{ showOnKanbanCard?: boolean }>,
+  blocks: Array<
+    | { type: "field"; field: { showOnKanbanCard?: boolean } }
+    | { type: "group"; group: { fields: Array<{ showOnKanbanCard?: boolean }> } }
+  >,
   ctx: z.RefinementCtx,
   pathPrefix: (string | number)[],
 ) {
-  const count = fields.filter((field) => field.showOnKanbanCard).length;
+  const count = flattenBlockFields(blocks).filter((field) => field.showOnKanbanCard).length;
 
   if (count > MAX_KANBAN_CARD_FIELDS) {
     ctx.addIssue({
@@ -54,10 +99,10 @@ export const createCampaignTypeSchema = z
     name: z.string().min(1).max(120),
     slug: slugSchema,
     description: z.string().max(500).optional(),
-    fields: z.array(campaignTypeFieldSchema).default([]),
+    blocks: z.array(campaignTypeFieldBlockSchema).default([]),
   })
   .superRefine((data, ctx) => {
-    validateKanbanCardFieldLimit(data.fields, ctx, ["fields"]);
+    validateKanbanCardFieldLimit(data.blocks, ctx, ["blocks"]);
   });
 
 export const updateCampaignTypeSchema = z.object({
@@ -74,13 +119,15 @@ export const deleteCampaignTypeSchema = z.object({
 export const upsertCampaignTypeFieldsSchema = z
   .object({
     campaignTypeId: cuidSchema,
-    fields: z.array(campaignTypeFieldSchema),
+    blocks: z.array(campaignTypeFieldBlockSchema),
   })
   .superRefine((data, ctx) => {
-    validateKanbanCardFieldLimit(data.fields, ctx, ["fields"]);
+    validateKanbanCardFieldLimit(data.blocks, ctx, ["blocks"]);
   });
 
 export type CreateCampaignTypeInput = z.infer<typeof createCampaignTypeSchema>;
 export type UpdateCampaignTypeInput = z.infer<typeof updateCampaignTypeSchema>;
 export type CampaignTypeFieldInput = z.infer<typeof campaignTypeFieldSchema>;
+export type CampaignTypeFieldGroupInput = z.infer<typeof campaignTypeFieldGroupSchema>;
+export type CampaignTypeFieldBlockInput = z.infer<typeof campaignTypeFieldBlockSchema>;
 export type UpsertCampaignTypeFieldsInput = z.infer<typeof upsertCampaignTypeFieldsSchema>;

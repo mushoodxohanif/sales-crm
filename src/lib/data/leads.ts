@@ -1,3 +1,4 @@
+import { campaignTypeFieldsQuery } from "@/lib/campaign-types/queries";
 import { db } from "@/lib/db";
 
 export async function getCampaignWithStagesAndLeads(campaignId: string) {
@@ -6,9 +7,7 @@ export async function getCampaignWithStagesAndLeads(campaignId: string) {
     include: {
       campaignType: {
         include: {
-          fields: {
-            orderBy: { sortOrder: "asc" },
-          },
+          fields: campaignTypeFieldsQuery,
         },
       },
       stages: {
@@ -42,9 +41,7 @@ export async function getLeadFormContext(campaignId: string) {
       status: true,
       campaignType: {
         include: {
-          fields: {
-            orderBy: { sortOrder: "asc" },
-          },
+          fields: campaignTypeFieldsQuery,
         },
       },
       stages: {
@@ -84,9 +81,7 @@ export async function getLeadWithDetails(campaignId: string, leadId: string) {
           status: true,
           campaignType: {
             include: {
-              fields: {
-                orderBy: { sortOrder: "asc" },
-              },
+              fields: campaignTypeFieldsQuery,
             },
           },
           stages: {

@@ -5,7 +5,7 @@ import { EditCampaignTypeForm } from "@/components/campaign-types/edit-campaign-
 import { SetPageTitle } from "@/components/page-title";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
-import { campaignTypeFieldsToBuilderValues } from "@/lib/campaign-types/serialize";
+import { campaignTypeFieldsToBuilderBlocks } from "@/lib/campaign-types/serialize";
 import { getCampaignTypeWithFields } from "@/lib/data/campaign-types";
 import { cn } from "@/lib/utils";
 
@@ -46,7 +46,10 @@ export default async function CampaignTypeDetailPage({ params }: CampaignTypeDet
         initialName={campaignType.name}
         initialSlug={campaignType.slug}
         initialDescription={campaignType.description}
-        initialFields={campaignTypeFieldsToBuilderValues(campaignType.fields)}
+        initialBlocks={campaignTypeFieldsToBuilderBlocks(
+          campaignType.fields,
+          campaignType.fieldGroups,
+        )}
         campaignCount={campaignType._count.campaigns}
       />
     </main>

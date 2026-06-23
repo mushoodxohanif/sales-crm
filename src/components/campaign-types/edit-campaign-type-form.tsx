@@ -9,14 +9,14 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { updateCampaignType, upsertCampaignTypeFields } from "@/lib/actions/campaign-types";
-import { type FieldBuilderValue, fieldBuilderToInput } from "@/lib/campaign-types/fields";
+import { blocksToApiInput, type FieldBuilderBlock } from "@/lib/campaign-types/fields";
 
 interface EditCampaignTypeFormProps {
   campaignTypeId: string;
   initialName: string;
   initialSlug: string;
   initialDescription: string | null;
-  initialFields: FieldBuilderValue[];
+  initialBlocks: FieldBuilderBlock[];
   campaignCount: number;
 }
 
@@ -25,7 +25,7 @@ export function EditCampaignTypeForm({
   initialName,
   initialSlug,
   initialDescription,
-  initialFields,
+  initialBlocks,
   campaignCount,
 }: EditCampaignTypeFormProps) {
   const router = useRouter();
@@ -33,7 +33,7 @@ export function EditCampaignTypeForm({
   const [name, setName] = useState(initialName);
   const [slug, setSlug] = useState(initialSlug);
   const [description, setDescription] = useState(initialDescription ?? "");
-  const [fields, setFields] = useState<FieldBuilderValue[]>(initialFields);
+  const [blocks, setBlocks] = useState<FieldBuilderBlock[]>(initialBlocks);
 
   function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -53,7 +53,7 @@ export function EditCampaignTypeForm({
 
       const fieldsResult = await upsertCampaignTypeFields({
         campaignTypeId,
-        fields: fields.map(fieldBuilderToInput),
+        blocks: blocksToApiInput(blocks),
       });
 
       if (!fieldsResult.success) {
@@ -113,7 +113,7 @@ export function EditCampaignTypeForm({
         </div>
       </section>
 
-      <FieldBuilder fields={fields} onChange={setFields} disabled={isPending} />
+      <FieldBuilder blocks={blocks} onChange={setBlocks} disabled={isPending} />
 
       <div className="flex items-center justify-end gap-3">
         <Button

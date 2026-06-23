@@ -6,6 +6,7 @@ import { FieldType, type Prisma } from "@/generated/prisma/client";
 import { type ActionResult, actionError, actionSuccess } from "@/lib/actions/types";
 import { db } from "@/lib/db";
 import {
+  type CampaignTypeFieldBlockInput,
   type CampaignTypeFieldInput,
   createCampaignTypeSchema,
   deleteCampaignTypeSchema,
@@ -27,7 +28,7 @@ function formatZodError(error: { issues: { message: string }[] }) {
   return error.issues[0]?.message ?? "Invalid input.";
 }
 
-function normalizeFieldInput(field: CampaignTypeFieldInput, sortOrder: number) {
+function normalizeFieldInput(field: CampaignTypeFieldInput, sortOrder: number, groupId?: string) {
   const options =
     field.fieldType === FieldType.SELECT || field.fieldType === FieldType.MULTI_SELECT
       ? field.options
@@ -41,8 +42,51 @@ function normalizeFieldInput(field: CampaignTypeFieldInput, sortOrder: number) {
     showOnKanbanCard: field.showOnKanbanCard,
     isUnique: field.isUnique,
     sortOrder,
+    groupId: groupId ?? null,
     options: options ? (options as Prisma.InputJsonValue) : undefined,
   };
+}
+
+type FlattenedField = CampaignTypeFieldInput & {
+  groupIndex?: number;
+};
+
+function flattenBlocks(blocks: CampaignTypeFieldBlockInput[]): {
+  fields: FlattenedField[];
+  groups: Array<{ id?: string; label: string; groupIndex: number }>;
+} {
+  const fields: FlattenedField[] = [];
+  const groups: Array<{ id?: string; label: string; groupIndex: number }> = [];
+  let sortOrder = 0;
+  let groupIndex = 0;
+
+  for (const block of blocks) {
+    if (block.type === "field") {
+      fields.push({ ...block.field, sortOrder });
+      sortOrder += 1;
+      continue;
+    }
+
+    const currentGroupIndex = groupIndex;
+    groups.push({
+      id: block.group.id,
+      label: block.group.label,
+      groupIndex: currentGroupIndex,
+    });
+    groupIndex += 1;
+
+    for (const field of block.group.fields) {
+      fields.push({ ...field, sortOrder, groupIndex: currentGroupIndex });
+      sortOrder += 1;
+    }
+  }
+
+  return { fields, groups };
+}
+
+function validateUniqueFieldKeys(fields: FlattenedField[]) {
+  const keys = fields.map((field) => field.key);
+  return new Set(keys).size === keys.length;
 }
 
 export async function createCampaignType(input: unknown): Promise<ActionResult<{ id: string }>> {
@@ -57,7 +101,8 @@ export async function createCampaignType(input: unknown): Promise<ActionResult<{
     return actionError(formatZodError(parsed.error));
   }
 
-  const { name, slug, description, fields } = parsed.data;
+  const { name, slug, description, blocks } = parsed.data;
+  const { fields, groups } = flattenBlocks(blocks);
 
   const existing = await db.campaignType.findUnique({
     where: { slug },
@@ -68,21 +113,46 @@ export async function createCampaignType(input: unknown): Promise<ActionResult<{
     return actionError("A campaign type with this slug already exists.");
   }
 
-  const keys = fields.map((field) => field.key);
-  if (new Set(keys).size !== keys.length) {
+  if (!validateUniqueFieldKeys(fields)) {
     return actionError("Field keys must be unique within a campaign type.");
   }
 
-  const campaignType = await db.campaignType.create({
-    data: {
-      name,
-      slug,
-      description,
-      fields: {
-        create: fields.map((field, index) => normalizeFieldInput(field, index)),
+  const campaignType = await db.$transaction(async (tx) => {
+    const created = await tx.campaignType.create({
+      data: {
+        name,
+        slug,
+        description,
       },
-    },
-    select: { id: true },
+      select: { id: true },
+    });
+
+    const groupIdByIndex = new Map<number, string>();
+
+    for (const group of groups) {
+      const createdGroup = await tx.campaignTypeFieldGroup.create({
+        data: {
+          campaignTypeId: created.id,
+          label: group.label,
+        },
+        select: { id: true },
+      });
+      groupIdByIndex.set(group.groupIndex, createdGroup.id);
+    }
+
+    for (const field of fields) {
+      const groupId =
+        field.groupIndex === undefined ? undefined : groupIdByIndex.get(field.groupIndex);
+
+      await tx.campaignTypeField.create({
+        data: {
+          campaignTypeId: created.id,
+          ...normalizeFieldInput(field, field.sortOrder, groupId),
+        },
+      });
+    }
+
+    return created;
   });
 
   revalidatePath("/campaign-types");
@@ -203,7 +273,8 @@ export async function upsertCampaignTypeFields(
     return actionError(formatZodError(parsed.error));
   }
 
-  const { campaignTypeId, fields } = parsed.data;
+  const { campaignTypeId, blocks } = parsed.data;
+  const { fields, groups } = flattenBlocks(blocks);
 
   const campaignType = await db.campaignType.findUnique({
     where: { id: campaignTypeId },
@@ -217,6 +288,9 @@ export async function upsertCampaignTypeFields(
           },
         },
       },
+      fieldGroups: {
+        select: { id: true },
+      },
     },
   });
 
@@ -224,13 +298,12 @@ export async function upsertCampaignTypeFields(
     return actionError("Campaign type not found.");
   }
 
-  const keys = fields.map((field) => field.key);
-  if (new Set(keys).size !== keys.length) {
+  if (!validateUniqueFieldKeys(fields)) {
     return actionError("Field keys must be unique within a campaign type.");
   }
 
-  const incomingIds = new Set(fields.flatMap((field) => (field.id ? [field.id] : [])));
-  const fieldsToRemove = campaignType.fields.filter((field) => !incomingIds.has(field.id));
+  const incomingFieldIds = new Set(fields.flatMap((field) => (field.id ? [field.id] : [])));
+  const fieldsToRemove = campaignType.fields.filter((field) => !incomingFieldIds.has(field.id));
 
   for (const field of fieldsToRemove) {
     if (field._count.fieldValues > 0) {
@@ -239,6 +312,11 @@ export async function upsertCampaignTypeFields(
       );
     }
   }
+
+  const incomingGroupIds = new Set(groups.flatMap((group) => (group.id ? [group.id] : [])));
+  const groupsToRemove = campaignType.fieldGroups.filter(
+    (group) => !incomingGroupIds.has(group.id),
+  );
 
   await db.$transaction(async (tx) => {
     if (fieldsToRemove.length > 0) {
@@ -249,8 +327,48 @@ export async function upsertCampaignTypeFields(
       });
     }
 
-    for (const [index, field] of fields.entries()) {
-      const data = normalizeFieldInput(field, index);
+    if (groupsToRemove.length > 0) {
+      await tx.campaignTypeFieldGroup.deleteMany({
+        where: {
+          id: { in: groupsToRemove.map((group) => group.id) },
+        },
+      });
+    }
+
+    const groupIdByIndex = new Map<number, string>();
+
+    for (const group of groups) {
+      if (group.id) {
+        const existingGroup = campaignType.fieldGroups.find((item) => item.id === group.id);
+
+        if (!existingGroup) {
+          throw new Error(`Field group "${group.label}" was not found on this campaign type.`);
+        }
+
+        await tx.campaignTypeFieldGroup.update({
+          where: { id: group.id },
+          data: { label: group.label },
+        });
+        groupIdByIndex.set(group.groupIndex, group.id);
+        continue;
+      }
+
+      const createdGroup = await tx.campaignTypeFieldGroup.create({
+        data: {
+          campaignTypeId,
+          label: group.label,
+        },
+        select: { id: true },
+      });
+      groupIdByIndex.set(group.groupIndex, createdGroup.id);
+    }
+
+    for (const field of fields) {
+      const data = normalizeFieldInput(
+        field,
+        field.sortOrder,
+        field.groupIndex === undefined ? undefined : groupIdByIndex.get(field.groupIndex),
+      );
 
       if (field.id) {
         const existingField = campaignType.fields.find((item) => item.id === field.id);
