@@ -120,7 +120,7 @@ async function backfillMissingPreviousVersions(leadId: string, userId: string) {
 
   const fromStage = lead.campaign.stages.find((stage) => stage.name === stageMove.fromStageName);
 
-  if (!fromStage || fromStage.id === onlyVersion.stageId) {
+  if (!fromStage || !onlyVersion.stageId || fromStage.id === onlyVersion.stageId) {
     return;
   }
 
@@ -146,6 +146,7 @@ async function backfillMissingPreviousVersions(leadId: string, userId: string) {
       snapshot: previousSnapshot,
       summary: `At ${stageMove.fromStageName}`,
       createdAt: new Date(onlyVersion.createdAt.getTime() - 1),
+      stageName: stageMove.fromStageName,
     },
     db,
   );
@@ -199,14 +200,16 @@ function serializeVersions(
     leadId: string;
     changeType: "CREATED" | "UPDATED" | "STAGE_MOVED" | "REVERTED";
     summary: string;
-    stageId: string;
+    stageId: string | null;
+    stageName: string;
+    stageColor: string | null;
     fieldValues: unknown;
     createdAt: Date;
     stage: {
       id: string;
       name: string;
       color: string | null;
-    };
+    } | null;
     user: {
       id: string;
       name: string | null;
@@ -217,7 +220,7 @@ function serializeVersions(
 ): LeadVersionPayload[] {
   const serialized = versions.map((version) => {
     const versionSnapshot = {
-      stageId: version.stageId,
+      stageId: version.stageId ?? version.stage?.id ?? "",
       fieldValues: parseStoredFieldValues(version.fieldValues),
     };
 
@@ -226,9 +229,9 @@ function serializeVersions(
       leadId: version.leadId,
       changeType: version.changeType,
       summary: version.summary,
-      stageId: version.stageId,
-      stageName: version.stage.name,
-      stageColor: version.stage.color,
+      stageId: version.stageId ?? version.stage?.id ?? "",
+      stageName: version.stage?.name ?? version.stageName,
+      stageColor: version.stage?.color ?? version.stageColor,
       fieldValues: versionSnapshot.fieldValues,
       createdAt: version.createdAt.toISOString(),
       isCurrent: false,
@@ -236,15 +239,20 @@ function serializeVersions(
     };
   });
 
-  const currentIndex = serialized.findIndex((_version, index) =>
-    snapshotsEqual(
+  const currentIndex = serialized.findIndex((_version, index) => {
+    const versionStageId = versions[index].stageId ?? versions[index].stage?.id;
+    if (!versionStageId) {
+      return false;
+    }
+
+    return snapshotsEqual(
       {
-        stageId: versions[index].stageId,
+        stageId: versionStageId,
         fieldValues: parseStoredFieldValues(versions[index].fieldValues),
       },
       currentSnapshot,
-    ),
-  );
+    );
+  });
 
   if (currentIndex >= 0) {
     serialized[currentIndex].isCurrent = true;
@@ -358,6 +366,10 @@ export async function revertLeadToVersion(input: unknown): Promise<
     return actionError("Lead creation cannot be restored from history.");
   }
 
+  if (!version.stageId || !version.stage) {
+    return actionError("Cannot revert to a version whose pipeline stage was removed.");
+  }
+
   const lead = await db.lead.findUnique({
     where: { id: leadId },
     select: {
@@ -400,6 +412,8 @@ export async function revertLeadToVersion(input: unknown): Promise<
   const fields = toFieldDefinitions(lead.campaign.campaignType.fields);
   const targetFieldValues = parseStoredFieldValues(version.fieldValues);
   const targetStageId = version.stageId;
+
+  const targetStageName = version.stage.name;
 
   const duplicateCheck = await assertNoDuplicateFieldValues({
     campaignId: lead.campaignId,
@@ -502,7 +516,7 @@ export async function revertLeadToVersion(input: unknown): Promise<
           previousSnapshot,
           nextSnapshot,
           previousStageName: null,
-          nextStageName: version.stage.name,
+          nextStageName: targetStageName,
         }),
       },
       tx,

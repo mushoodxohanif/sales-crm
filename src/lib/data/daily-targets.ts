@@ -122,6 +122,10 @@ export async function getDailyTargetProgressForUser(
   const completedByStage = new Map<string, number>();
 
   for (const transition of transitions) {
+    if (!transition.toStageId) {
+      continue;
+    }
+
     completedByStage.set(
       transition.toStageId,
       (completedByStage.get(transition.toStageId) ?? 0) + 1,

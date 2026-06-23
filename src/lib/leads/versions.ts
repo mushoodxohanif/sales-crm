@@ -12,7 +12,7 @@ export type LeadSnapshot = {
   fieldValues: LeadVersionFieldSnapshot[];
 };
 
-type LeadDbClient = Pick<Prisma.TransactionClient, "lead" | "leadVersion">;
+type LeadDbClient = Pick<Prisma.TransactionClient, "lead" | "leadVersion" | "leadStage">;
 
 function parseFieldSnapshotValue(value: unknown): LeadVersionFieldSnapshot["value"] {
   if (
@@ -133,7 +133,7 @@ export async function ensurePreviousSnapshotRecorded(
 
   if (latestVersion) {
     const latestSnapshot: LeadSnapshot = {
-      stageId: latestVersion.stageId,
+      stageId: latestVersion.stageId ?? input.snapshot.stageId,
       fieldValues: parseStoredFieldValues(latestVersion.fieldValues),
     };
 
@@ -243,15 +243,31 @@ export async function recordLeadVersion(
     snapshot: LeadSnapshot;
     summary: string;
     createdAt?: Date;
+    stageName?: string | null;
+    stageColor?: string | null;
   },
   client: LeadDbClient,
 ) {
+  let stageName = input.stageName ?? null;
+  let stageColor = input.stageColor ?? null;
+
+  if (!stageName) {
+    const stage = await client.leadStage.findUnique({
+      where: { id: input.snapshot.stageId },
+      select: { name: true, color: true },
+    });
+    stageName = stage?.name ?? "Removed stage";
+    stageColor = stage?.color ?? null;
+  }
+
   await client.leadVersion.create({
     data: {
       leadId: input.leadId,
       userId: input.userId,
       changeType: input.changeType,
       stageId: input.snapshot.stageId,
+      stageName,
+      stageColor,
       fieldValues: input.snapshot.fieldValues as Prisma.InputJsonValue,
       summary: input.summary,
       ...(input.createdAt ? { createdAt: input.createdAt } : {}),
