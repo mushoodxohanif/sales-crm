@@ -35,7 +35,7 @@ export function fieldTypeRequiresOptions(fieldType: FieldTypeValue) {
   return fieldType === "SELECT" || fieldType === "MULTI_SELECT";
 }
 
-export const MAX_KANBAN_CARD_FIELDS = 2;
+export const MAX_KANBAN_CARD_FIELDS = 3;
 
 export type FieldBuilderValue = {
   clientId: string;
