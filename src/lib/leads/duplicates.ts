@@ -109,7 +109,7 @@ function valuesMatch(left: NormalizedValue, right: NormalizedValue): boolean {
   }
 }
 
-async function hasExistingDuplicateInDatabase(
+async function findLeadIdByNormalizedFieldValue(
   client: DuplicateCheckClient,
   params: {
     campaignId: string;
@@ -117,7 +117,7 @@ async function hasExistingDuplicateInDatabase(
     normalized: NormalizedValue;
     excludeLeadId?: string;
   },
-): Promise<boolean> {
+): Promise<string | null> {
   const { campaignId, fieldId, normalized, excludeLeadId } = params;
 
   if (normalized.kind === "string") {
@@ -133,7 +133,7 @@ async function hasExistingDuplicateInDatabase(
       LIMIT 1
     `;
 
-    return rows.length > 0;
+    return rows[0]?.leadId ?? null;
   }
 
   if (normalized.kind === "number") {
@@ -148,7 +148,7 @@ async function hasExistingDuplicateInDatabase(
       LIMIT 1
     `;
 
-    return rows.length > 0;
+    return rows[0]?.leadId ?? null;
   }
 
   if (normalized.kind === "boolean") {
@@ -163,7 +163,7 @@ async function hasExistingDuplicateInDatabase(
       LIMIT 1
     `;
 
-    return rows.length > 0;
+    return rows[0]?.leadId ?? null;
   }
 
   const existingValues = await client.leadFieldValue.findMany({
@@ -174,12 +174,51 @@ async function hasExistingDuplicateInDatabase(
         ...(excludeLeadId ? { id: { not: excludeLeadId } } : {}),
       },
     },
-    select: { value: true },
+    select: { leadId: true, value: true },
   });
 
-  return existingValues.some((fieldValue) => {
+  for (const fieldValue of existingValues) {
     const stored = normalizeStoredValue(fieldValue.value);
-    return stored !== null && valuesMatch(stored, normalized);
+    if (stored !== null && valuesMatch(stored, normalized)) {
+      return fieldValue.leadId;
+    }
+  }
+
+  return null;
+}
+
+async function hasExistingDuplicateInDatabase(
+  client: DuplicateCheckClient,
+  params: {
+    campaignId: string;
+    fieldId: string;
+    normalized: NormalizedValue;
+    excludeLeadId?: string;
+  },
+): Promise<boolean> {
+  const leadId = await findLeadIdByNormalizedFieldValue(client, params);
+  return leadId !== null;
+}
+
+export async function findLeadIdByUniqueFieldValue(
+  client: DuplicateCheckClient,
+  params: {
+    campaignId: string;
+    fieldId: string;
+    value: string | number | boolean | string[] | null;
+    excludeLeadId?: string;
+  },
+): Promise<string | null> {
+  const normalized = normalizeFieldValueForComparison(params.value);
+  if (!normalized) {
+    return null;
+  }
+
+  return findLeadIdByNormalizedFieldValue(client, {
+    campaignId: params.campaignId,
+    fieldId: params.fieldId,
+    normalized,
+    excludeLeadId: params.excludeLeadId,
   });
 }
 

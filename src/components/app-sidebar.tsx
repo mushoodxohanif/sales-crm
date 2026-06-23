@@ -4,6 +4,7 @@ import {
   CheckSquareIcon,
   FileSpreadsheetIcon,
   LayoutDashboardIcon,
+  Link2Icon,
   MegaphoneIcon,
   MessageSquareIcon,
   MessageSquareReplyIcon,
@@ -42,6 +43,12 @@ const navItems = [
   },
   { href: "/messages", label: "Messages", icon: MessageSquareIcon, match: "exact" as const },
   { href: "/team", label: "Team", icon: UsersIcon, match: "exact" as const },
+  {
+    href: "/settings/integrations/losono",
+    label: "Losono",
+    icon: Link2Icon,
+    match: "prefix" as const,
+  },
   { href: "/settings/icp", label: "ICP settings", icon: TargetIcon, match: "prefix" as const },
 ];
 

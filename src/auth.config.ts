@@ -11,8 +11,19 @@ export const authConfig = {
       const isLoggedIn = Boolean(session?.user);
       const isLandingPage = nextUrl.pathname === "/";
       const isAuthRoute = nextUrl.pathname.startsWith("/api/auth");
+      const isOAuthAuthorize = nextUrl.pathname === "/oauth/authorize";
+      const isOAuthTokenEndpoint = nextUrl.pathname === "/oauth/token";
+      const isOAuthRevokeEndpoint = nextUrl.pathname === "/oauth/revoke";
+      const isIntegrationApi = nextUrl.pathname.startsWith("/api/v1/");
 
-      if (isAuthRoute || isLandingPage) {
+      if (
+        isAuthRoute ||
+        isLandingPage ||
+        isOAuthAuthorize ||
+        isOAuthTokenEndpoint ||
+        isOAuthRevokeEndpoint ||
+        isIntegrationApi
+      ) {
         return true;
       }
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { ChevronsUpDownIcon, LogOutIcon, TargetIcon } from "lucide-react";
+import { ChevronsUpDownIcon, Link2Icon, LogOutIcon, TargetIcon } from "lucide-react";
 import Link from "next/link";
 import { NotificationSettings } from "@/components/notifications/notification-settings";
 import { UserRoleBadge } from "@/components/team/user-role-badge";
@@ -71,6 +71,12 @@ export function UserMenu({ name, email, image, role, variant = "header" }: UserM
       </DropdownMenuLabel>
       <DropdownMenuSeparator />
       <NotificationSettings />
+      <DropdownMenuItem asChild>
+        <Link href="/settings/integrations/losono" className="flex items-center gap-1.5">
+          <Link2Icon className="size-4" />
+          Losono integration
+        </Link>
+      </DropdownMenuItem>
       <DropdownMenuItem asChild>
         <Link href="/settings/icp" className="flex items-center gap-1.5">
           <TargetIcon className="size-4" />

@@ -5,6 +5,7 @@ import { auth } from "@/auth";
 import { CampaignStatus, type Prisma } from "@/generated/prisma/client";
 import { type ActionResult, actionError, actionSuccess } from "@/lib/actions/types";
 import { db, interactiveTransactionOptions } from "@/lib/db";
+import { createLeadInternal } from "@/lib/leads/create-lead";
 import { assertNoDuplicateFieldValues } from "@/lib/leads/duplicates";
 import { toFieldDefinitions } from "@/lib/leads/field-values";
 import { recordStageTransition } from "@/lib/leads/stage-transitions";
@@ -58,24 +59,6 @@ function toJsonValue(value: string | number | boolean | string[]): Prisma.InputJ
   return value as Prisma.InputJsonValue;
 }
 
-async function getActiveCampaign(campaignId: string) {
-  return db.campaign.findUnique({
-    where: { id: campaignId },
-    include: {
-      campaignType: {
-        include: {
-          fields: {
-            orderBy: { sortOrder: "asc" },
-          },
-        },
-      },
-      stages: {
-        orderBy: { sortOrder: "asc" },
-      },
-    },
-  });
-}
-
 type LeadDbClient = Pick<typeof db, "lead">;
 
 export async function touchLeadUpdatedAt(leadId: string, client: LeadDbClient = db) {
@@ -107,91 +90,22 @@ export async function createLead(input: unknown): Promise<ActionResult<{ id: str
   }
 
   const { campaignId, currentStageId, fieldValues } = parsed.data;
-  const campaign = await getActiveCampaign(campaignId);
-
-  if (!campaign) {
-    return actionError("Campaign not found.");
-  }
-
-  if (campaign.status === CampaignStatus.ARCHIVED) {
-    return actionError("Cannot add leads to an archived campaign.");
-  }
-
-  const fields = toFieldDefinitions(campaign.campaignType.fields);
-  const validation = validateLeadFieldValues(fields, fieldValues);
-
-  if (!validation.success) {
-    return actionError(validation.error);
-  }
-
-  const stageId =
-    currentStageId ??
-    campaign.stages.find((stage) => stage.isDefault)?.id ??
-    campaign.stages[0]?.id;
-
-  if (!stageId) {
-    return actionError("Campaign has no pipeline stages.");
-  }
-
-  if (currentStageId) {
-    const stageValid = await assertStageBelongsToCampaign(currentStageId, campaignId);
-    if (!stageValid) {
-      return actionError("Selected stage does not belong to this campaign.");
-    }
-  }
-
-  const duplicateCheck = await assertNoDuplicateFieldValues({
-    campaignId,
-    fields,
-    fieldValues: validation.normalized,
-    client: db,
-  });
-
-  if (!duplicateCheck.success) {
-    return actionError(duplicateCheck.error);
-  }
-
-  const lead = await db.lead.create({
-    data: {
-      campaignId,
-      currentStageId: stageId,
-      fieldValues: {
-        create: validation.normalized
-          .filter((fieldValue) => fieldValue.value !== null)
-          .map((fieldValue) => ({
-            fieldId: fieldValue.fieldId,
-            value: toJsonValue(fieldValue.value as string | number | boolean | string[]),
-          })),
-      },
-    },
-    select: { id: true },
-  });
-
   const userId = await requireAuthUserId();
-  const snapshot = {
-    stageId,
-    fieldValues: serializeFieldValues(validation.normalized),
-  };
 
-  await recordLeadVersion(
-    {
-      leadId: lead.id,
-      userId,
-      changeType: "CREATED",
-      snapshot,
-      summary: buildVersionSummary({
-        changeType: "CREATED",
-        fields,
-        previousSnapshot: null,
-        nextSnapshot: snapshot,
-      }),
-    },
-    db,
-  );
+  const result = await createLeadInternal({
+    campaignId,
+    currentStageId,
+    fieldValues,
+    userId,
+  });
 
-  revalidateLeadPaths(campaignId, lead.id);
+  if (!result.success) {
+    return actionError(result.error);
+  }
 
-  return actionSuccess({ id: lead.id });
+  revalidateLeadPaths(campaignId, result.id);
+
+  return actionSuccess({ id: result.id });
 }
 
 export async function updateLead(input: unknown): Promise<ActionResult<{ id: string }>> {

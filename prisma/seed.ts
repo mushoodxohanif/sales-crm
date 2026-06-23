@@ -2,6 +2,15 @@ import { CampaignStatus, FieldType } from "../src/generated/prisma/client";
 import { DEFAULT_STAGES } from "../src/lib/campaigns/default-stages";
 import { db } from "../src/lib/db";
 import { DEFAULT_ICP_PROFILE } from "../src/lib/icp/defaults";
+import { LOSONO_OAUTH_CLIENT_ID } from "../src/lib/integrations/losono";
+
+const LOSONO_INTEGRATION_CLIENT = {
+  name: "Losono",
+  clientId: LOSONO_OAUTH_CLIENT_ID,
+  clientSecret: "",
+  redirectUris: [],
+  isPublic: true,
+} as const;
 
 const SEED_USER = {
   googleId: "seed-user-google-id",
@@ -150,6 +159,29 @@ const CAMPAIGN_TYPES = [
   },
 ] as const;
 
+async function seedLosonoIntegrationClient() {
+  const { clientId, clientSecret, name, redirectUris, isPublic } = LOSONO_INTEGRATION_CLIENT;
+
+  await db.integrationClient.upsert({
+    where: { clientId },
+    update: {
+      name,
+      clientSecret,
+      redirectUris,
+      isPublic,
+    },
+    create: {
+      clientId,
+      name,
+      clientSecret,
+      redirectUris,
+      isPublic,
+    },
+  });
+
+  console.log(`Seeded integration client: ${name} (${clientId})`);
+}
+
 async function main() {
   console.log("Seeding database...");
 
@@ -280,6 +312,8 @@ async function main() {
 
     console.log(`Seeded campaign type: ${typeSeed.name}`);
   }
+
+  await seedLosonoIntegrationClient();
 
   console.log(`Seed complete. Demo user: ${user.email}`);
 }
